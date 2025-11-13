@@ -4,6 +4,48 @@
 
 A comprehensive cryptocurrency portfolio tracking application that aggregates holdings across multiple wallets and exchanges. The platform provides real-time portfolio valuation, performance analytics, transaction history, and multi-source asset management. Built with a modern React frontend and Express backend, the application emphasizes data visualization and financial clarity through a sophisticated dashboard interface inspired by professional crypto tracking platforms.
 
+## Supported Blockchain Networks
+
+The application supports **19 EVM-compatible blockchain networks** via Etherscan API v2, enabling automatic wallet scanning across:
+
+**Layer 1 Networks (7):**
+- **Ethereum** (Chain ID: 1) - Native token: ETH
+- **BNB Smart Chain** (Chain ID: 56) - Native token: BNB
+- **Polygon PoS** (Chain ID: 137) - Native token: MATIC
+- **Avalanche C-Chain** (Chain ID: 43114) - Native token: AVAX
+- **Fantom** (Chain ID: 250) - Native token: FTM
+- **Gnosis Chain** (Chain ID: 100) - Native token: xDAI
+- **Celo** (Chain ID: 42220) - Native token: CELO
+
+**Layer 2 Networks (10):**
+- **Arbitrum One** (Chain ID: 42161) - Native token: ETH
+- **Arbitrum Nova** (Chain ID: 42170) - Native token: ETH
+- **Optimism** (Chain ID: 10) - Native token: ETH
+- **Base** (Chain ID: 8453) - Native token: ETH
+- **zkSync Era** (Chain ID: 324) - Native token: ETH
+- **Polygon zkEVM** (Chain ID: 1101) - Native token: ETH
+- **Linea** (Chain ID: 59144) - Native token: ETH
+- **Scroll** (Chain ID: 534352) - Native token: ETH
+- **Blast** (Chain ID: 81457) - Native token: ETH
+- **Mantle** (Chain ID: 5000) - Native token: MNT
+
+**Polkadot/Kusama Parachains (2):**
+- **Moonbeam** (Chain ID: 1284) - Native token: GLMR
+- **Moonriver** (Chain ID: 1285) - Native token: MOVR
+
+**Multi-Network Wallet Scanning:**
+When adding a wallet address, the application automatically:
+1. Scans all 19 networks in parallel using Promise.allSettled
+2. Creates separate connections for each network containing balances or tokens
+3. Handles partial failures gracefully (some networks succeed while others fail)
+4. Displays clear status messages (success, partial failure, complete failure, no data)
+
+**API Integration:**
+- Uses Etherscan API v2 with unified endpoint (`https://api.etherscan.io/v2/api`)
+- Single API key works across all supported networks
+- Each request includes `chainid` parameter to specify target network
+- Supports native balance queries, token balance queries, and transaction history
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.

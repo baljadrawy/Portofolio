@@ -66,7 +66,16 @@ export class EtherscanService {
     try {
       const url = `${ETHERSCAN_BASE_URL}?module=account&action=balance&address=${address}&tag=latest&apikey=${this.apiKey}`;
       const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`Etherscan API error: ${response.status} ${response.statusText}`);
+      }
+      
       const data: EtherscanBalanceResponse = await response.json();
+
+      if (data.status === '0') {
+        throw new Error(`Etherscan error: ${data.message}`);
+      }
 
       if (data.status === '1') {
         const balanceInEth = (parseFloat(data.result) / 1e18).toString();
@@ -75,7 +84,7 @@ export class EtherscanService {
       return '0';
     } catch (error) {
       console.error('Error fetching ETH balance:', error);
-      return '0';
+      throw error;
     }
   }
 
@@ -125,7 +134,14 @@ export class EtherscanService {
       const tokens: TokenInfo[] = [];
       tokenMap.forEach((tokenData) => {
         if (tokenData.balance > BigInt(0)) {
-          const balanceStr = (Number(tokenData.balance) / Math.pow(10, tokenData.decimals)).toString();
+          const divisor = BigInt(10) ** BigInt(tokenData.decimals);
+          const wholePart = tokenData.balance / divisor;
+          const remainder = tokenData.balance % divisor;
+          
+          const balanceStr = remainder > BigInt(0)
+            ? `${wholePart}.${remainder.toString().padStart(tokenData.decimals, '0').replace(/0+$/, '')}`
+            : wholePart.toString();
+          
           tokens.push({
             symbol: tokenData.symbol,
             name: tokenData.name,

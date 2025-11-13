@@ -122,7 +122,7 @@ export default function Settings() {
 
       toast({
         title: "تمت المزامنة بنجاح",
-        description: `تم جلب ${result.tokensCount} توكن و ${result.transactionsCount} معاملة من المحفظة`,
+        description: `تم جلب ${result.tokensCount} توكن و ${result.transactionsCount} معاملة من شبكة ${networkName}`,
       });
     } catch (error) {
       toast({

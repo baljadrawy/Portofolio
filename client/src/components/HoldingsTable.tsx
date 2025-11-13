@@ -14,6 +14,7 @@ export interface Holding {
   avgCost: number;
   currentPrice: number;
   change24h: number;
+  change24hValue: number;
   value: number;
   profitLoss: number;
   profitLossPercent: number;

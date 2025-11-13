@@ -168,9 +168,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const value = amount * currentPrice;
         const cost = amount * avgCost;
         
-        // Calculate yesterday's price
-        const yesterdayPrice = currentPrice / (1 + change24hPercent / 100);
+        // Validate and clamp 24h percent change to avoid division issues
+        // Clamp to [-99.9, +999] to prevent extreme values
+        const validChange24hPercent = Math.max(-99.9, Math.min(999, change24hPercent));
+        
+        // Calculate yesterday's price safely
+        // If change is -100%, yesterdayPrice would be infinity, so we clamp
+        const yesterdayPrice = validChange24hPercent <= -99.9 
+          ? currentPrice * 1000  // Assume it was 1000x higher if it crashed 99.9%
+          : currentPrice / (1 + validChange24hPercent / 100);
+        
         const valueYesterday = amount * yesterdayPrice;
+        const change24hValue = value - valueYesterday;
         
         totalValue += value;
         totalValueYesterday += valueYesterday;
@@ -181,7 +190,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           amount,
           avgCost,
           currentPrice,
-          change24h: change24hPercent,
+          change24h: validChange24hPercent,
+          change24hValue,
           value,
           profitLoss: value - cost,
           profitLossPercent: cost > 0 ? ((value - cost) / cost) * 100 : 0,
@@ -190,12 +200,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const totalProfitLoss = totalValue - totalCost;
       const totalProfitLossPercent = totalCost > 0 ? (totalProfitLoss / totalCost) * 100 : 0;
-      const change24h = totalValue - totalValueYesterday;
-      const change24hPercent = totalValueYesterday > 0 ? (change24h / totalValueYesterday) * 100 : 0;
+      const change24hValue = totalValue - totalValueYesterday;
+      const change24hPercent = totalValueYesterday > 0 ? (change24hValue / totalValueYesterday) * 100 : 0;
 
       res.json({
         totalValue,
-        change24h,
+        change24hValue,
         change24hPercent,
         totalProfitLoss,
         totalProfitLossPercent,

@@ -12,13 +12,13 @@ import { useToast } from "@/hooks/use-toast";
 
 interface PortfolioSummary {
   totalValue: number;
-  change24h: number;
+  change24hValue: number;
   change24hPercent: number;
   totalProfitLoss: number;
   totalProfitLossPercent: number;
   assetsCount: number;
   connectedSources: number;
-  holdings: Array<Holding & { currentPrice: number; change24h: number; value: number; profitLoss: number; profitLossPercent: number }>;
+  holdings: Array<Holding & { currentPrice: number; change24h: number; change24hValue: number; value: number; profitLoss: number; profitLossPercent: number }>;
   transactions: Array<Transaction & { timestamp: string }>;
   connections: Array<{ id: string; name: string; type: string; status: string; lastSync: string | null }>;
 }
@@ -164,7 +164,7 @@ export default function Dashboard() {
     <div className="space-y-6">
       <PortfolioOverview
         totalValue={portfolio.totalValue}
-        change24h={portfolio.change24h}
+        change24h={portfolio.change24hValue}
         change24hPercent={portfolio.change24hPercent}
         totalProfitLoss={portfolio.totalProfitLoss}
         totalProfitLossPercent={portfolio.totalProfitLossPercent}

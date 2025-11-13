@@ -10,6 +10,17 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (November 13, 2025)
 
+**Solana Blockchain Integration:**
+- Completed full Solana blockchain support with dual-namespace architecture
+- Created Solscan service (server/services/solscan.ts) with API v2 support for fetching Solana wallet data and token balances
+- Added backend endpoint: POST /api/wallet/scan-solana for scanning Solana wallets
+- Updated sync endpoint to handle both EVM (via Etherscan) and Solana (via Solscan) based on chainNamespace field
+- Extended MemStorage, schema, and grouping logic to support chainNamespace and networkKey fields
+- Added Solana wallet section in Settings UI with dedicated input fields (name and address)
+- Updated groupConnections.ts to display Solana network badges ("SOL") alongside EVM badges
+- Requires valid SOLSCAN_API_KEY secret for Pro API subscription
+- Arabic UI labels: "محافظ Solana" section with "اسم المحفظة" and "عنوان المحفظة" fields
+
 **Dashboard Tabs Organization:**
 - Reorganized Dashboard with tabs for better content organization
 - Tab 1: "الأصول والممتلكات" (Holdings) - Contains Asset Allocation Chart and Holdings Table
@@ -58,10 +69,12 @@ The application uses a monorepo structure with shared TypeScript types between t
 
 ### Feature Specifications
 
-- **Multi-Network Wallet Scanning:** Automatically scans wallet addresses across 19 supported EVM-compatible networks, handling rate limiting, partial failures, and providing clear status messages. Networks include Layer 1s (Ethereum, BNB Smart Chain, Polygon, Avalanche, Fantom, Gnosis, Celo), Layer 2s (Arbitrum One/Nova, Optimism, Base, zkSync Era, Polygon zkEVM, Linea, Scroll, Blast, Mantle), and Polkadot/Kusama Parachains (Moonbeam, Moonriver).
+- **Multi-Network Wallet Scanning:** 
+  - **EVM Networks:** Automatically scans wallet addresses across 19 supported EVM-compatible networks, handling rate limiting, partial failures, and providing clear status messages. Networks include Layer 1s (Ethereum, BNB Smart Chain, Polygon, Avalanche, Fantom, Gnosis, Celo), Layer 2s (Arbitrum One/Nova, Optimism, Base, zkSync Era, Polygon zkEVM, Linea, Scroll, Blast, Mantle), and Polkadot/Kusama Parachains (Moonbeam, Moonriver).
+  - **Solana Network:** Supports Solana blockchain wallet scanning using Solscan API v2 with dedicated UI section for Solana wallet management.
 - **Custom Wallet Naming:** Allows users to provide optional custom names for their wallets, which are then used in the UI for clarity.
-- **Wallet Connection Grouping:** Groups connections by wallet address, displaying them as a single entry with network badges for all chains where holdings exist.
-- **Unified Holdings View:** Aggregates all assets from all networks into a single view on the dashboard, displaying network names next to asset symbols and consolidating for allocation charts.
+- **Wallet Connection Grouping:** Groups connections by wallet address, displaying them as a single entry with network badges for all chains where holdings exist. Supports both EVM and non-EVM (Solana) networks with appropriate badge display.
+- **Unified Holdings View:** Aggregates all assets from all networks (EVM and Solana) into a single view on the dashboard, displaying network names next to asset symbols and consolidating for allocation charts.
 
 ### System Design Choices
 
@@ -76,6 +89,7 @@ The application uses a monorepo structure with shared TypeScript types between t
 ### Third-Party Services
 - **Neon Database:** Serverless PostgreSQL hosting (configured for future use).
 - **Etherscan API v2:** Used for blockchain data retrieval across supported EVM networks.
+- **Solscan API v2:** Used for Solana blockchain data retrieval including wallet balances and token metadata.
 - **Cryptocurrency Price APIs:** Planned integration for real-time price data (currently uses mock data).
 
 ### Key NPM Packages

@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertConnectionSchema, insertHoldingSchema, insertTransactionSchema } from "@shared/schema";
+import { etherscanService } from "./services/etherscan";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Connection routes
@@ -74,6 +75,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(transaction);
     } catch (error) {
       res.status(400).json({ error: "Invalid transaction data" });
+    }
+  });
+
+  // Sync wallet data from Etherscan
+  app.post("/api/wallet/sync/:connectionId", async (req, res) => {
+    try {
+      const connection = await storage.getConnection(req.params.connectionId);
+      
+      if (!connection) {
+        return res.status(404).json({ error: "Connection not found" });
+      }
+
+      if (connection.type !== 'wallet' || !connection.address) {
+        return res.status(400).json({ error: "Invalid wallet connection" });
+      }
+
+      await storage.updateConnection(connection.id, { status: 'syncing' });
+
+      const walletData = await etherscanService.getWalletData(connection.address);
+
+      await storage.deleteHoldingsByConnection(connection.id);
+
+      if (parseFloat(walletData.ethBalance) > 0) {
+        await storage.createHolding({
+          connectionId: connection.id,
+          symbol: 'ETH',
+          name: 'Ethereum',
+          amount: walletData.ethBalance,
+          avgCost: '0'
+        });
+      }
+
+      for (const token of walletData.tokens) {
+        if (parseFloat(token.balance) > 0) {
+          await storage.createHolding({
+            connectionId: connection.id,
+            symbol: token.symbol,
+            name: token.name,
+            amount: token.balance,
+            avgCost: '0'
+          });
+        }
+      }
+
+      for (const tx of walletData.transactions.slice(0, 50)) {
+        const isIncoming = tx.to.toLowerCase() === connection.address.toLowerCase();
+        const ethValue = (parseFloat(tx.value) / 1e18).toString();
+        
+        if (parseFloat(ethValue) > 0) {
+          await storage.createTransaction({
+            connectionId: connection.id,
+            type: isIncoming ? 'buy' : 'sell',
+            symbol: 'ETH',
+            amount: ethValue,
+            price: '0',
+            total: '0',
+            timestamp: new Date(parseInt(tx.timeStamp) * 1000),
+            source: connection.name
+          });
+        }
+      }
+
+      await storage.updateConnection(connection.id, { 
+        status: 'synced',
+        lastSync: new Date()
+      });
+
+      res.json({ 
+        success: true,
+        ethBalance: walletData.ethBalance,
+        tokensCount: walletData.tokens.length,
+        transactionsCount: walletData.transactions.length
+      });
+    } catch (error) {
+      console.error('Wallet sync error:', error);
+      
+      if (req.params.connectionId) {
+        await storage.updateConnection(req.params.connectionId, { status: 'error' });
+      }
+      
+      res.status(500).json({ error: "Failed to sync wallet data" });
     }
   });
 

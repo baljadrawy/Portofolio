@@ -86,11 +86,47 @@ export default function Settings() {
     }
   };
 
+  const handleSyncWallet = async (connectionId: string) => {
+    try {
+      toast({
+        title: "جاري المزامنة",
+        description: "جاري جلب البيانات من شبكة الإيثريوم...",
+      });
+
+      const response = await fetch(`/api/wallet/sync/${connectionId}`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to sync');
+      }
+
+      const result = await response.json();
+
+      await queryClient.invalidateQueries({ queryKey: ['/api/connections'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/portfolio/summary'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/holdings'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
+
+      toast({
+        title: "تمت المزامنة بنجاح",
+        description: `تم جلب ${result.tokensCount} توكن و ${result.transactionsCount} معاملة من المحفظة`,
+      });
+    } catch (error) {
+      toast({
+        title: "خطأ في المزامنة",
+        description: "فشل جلب البيانات من شبكة الإيثريوم. تأكد من صحة عنوان المحفظة ومفتاح API.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <SettingsPage
       connections={connections}
       onAddConnection={handleAddConnection}
       onRemoveConnection={handleRemoveConnection}
+      onSyncWallet={handleSyncWallet}
     />
   );
 }

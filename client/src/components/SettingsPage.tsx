@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 
@@ -17,9 +17,10 @@ interface SettingsPageProps {
   connections: ApiConnection[];
   onAddConnection?: (type: 'wallet' | 'exchange', data: { name?: string; address?: string; apiKey?: string; apiSecret?: string }) => void;
   onRemoveConnection?: (id: string) => void;
+  onSyncWallet?: (connectionId: string) => void;
 }
 
-export function SettingsPage({ connections, onAddConnection, onRemoveConnection }: SettingsPageProps) {
+export function SettingsPage({ connections, onAddConnection, onRemoveConnection, onSyncWallet }: SettingsPageProps) {
   const [newWalletName, setNewWalletName] = useState('');
   const [newWalletAddress, setNewWalletAddress] = useState('');
   const [newExchangeName, setNewExchangeName] = useState('');
@@ -98,17 +99,27 @@ export function SettingsPage({ connections, onAddConnection, onRemoveConnection 
                       <div className="text-sm text-muted-foreground">Wallet</div>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      console.log('Remove wallet', connection.id);
-                      onRemoveConnection?.(connection.id);
-                    }}
-                    data-testid={`button-remove-${connection.id}`}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onSyncWallet?.(connection.id)}
+                      data-testid={`button-sync-${connection.id}`}
+                    >
+                      <RefreshCw className="h-4 w-4 text-primary" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        console.log('Remove wallet', connection.id);
+                        onRemoveConnection?.(connection.id);
+                      }}
+                      data-testid={`button-remove-${connection.id}`}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
                 </div>
               ))}
           </div>

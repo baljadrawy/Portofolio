@@ -32,9 +32,10 @@ interface SettingsPageProps {
   onAddSolanaWallet?: (data: { name?: string; address: string }) => void;
   onRemoveConnection?: (id: string) => void;
   onSyncWallet?: (connectionId: string) => void;
+  onSyncExchange?: (connectionId: string) => void;
 }
 
-export function SettingsPage({ connections, onAddConnection, onAddSolanaWallet, onRemoveConnection, onSyncWallet }: SettingsPageProps) {
+export function SettingsPage({ connections, onAddConnection, onAddSolanaWallet, onRemoveConnection, onSyncWallet, onSyncExchange }: SettingsPageProps) {
   const [newWalletName, setNewWalletName] = useState('');
   const [newWalletAddress, setNewWalletAddress] = useState('');
   const [newSolanaName, setNewSolanaName] = useState('');
@@ -291,7 +292,7 @@ export function SettingsPage({ connections, onAddConnection, onAddSolanaWallet, 
                   className="flex items-center justify-between p-3 border border-border rounded-md"
                   data-testid={`exchange-${connection.id}`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-1">
                     <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
                       <span className="text-primary font-semibold">E</span>
                     </div>
@@ -303,17 +304,30 @@ export function SettingsPage({ connections, onAddConnection, onAddSolanaWallet, 
                       </div>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      console.log('Remove exchange', connection.id);
-                      onRemoveConnection?.(connection.id);
-                    }}
-                    data-testid={`button-remove-${connection.id}`}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {connection.hasApiKey && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onSyncExchange?.(connection.id)}
+                        data-testid={`button-sync-${connection.id}`}
+                        title="مزامنة البيانات"
+                      >
+                        <RefreshCw className="h-4 w-4 text-primary" />
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        console.log('Remove exchange', connection.id);
+                        onRemoveConnection?.(connection.id);
+                      }}
+                      data-testid={`button-remove-${connection.id}`}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
                 </div>
               ))}
           </div>

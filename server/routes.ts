@@ -12,7 +12,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/connections", async (_req, res) => {
     try {
       const connections = await storage.getAllConnections();
-      res.json(connections);
+      const safeConnections = connections.map(conn => ({
+        ...conn,
+        apiKey: conn.apiKey ? '***' : null,
+        apiSecret: conn.apiSecret ? '***' : null,
+      }));
+      res.json(safeConnections);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch connections" });
     }

@@ -128,7 +128,7 @@ export default function Settings() {
         const payload: Partial<InsertConnection> = {
           name,
           type: 'exchange',
-          status: 'synced' as const,
+          status: 'pending' as const,
         };
 
         if (data.apiKey?.trim()) {
@@ -138,15 +138,43 @@ export default function Settings() {
           payload.apiSecret = data.apiSecret.trim();
         }
         
-        await apiRequest('POST', '/api/connections', payload);
+        const result: any = await apiRequest('POST', '/api/connections', payload);
 
-        await queryClient.invalidateQueries({ queryKey: ['/api/connections'] });
-        await queryClient.invalidateQueries({ queryKey: ['/api/portfolio/summary'] });
+        if (data.apiKey && data.apiSecret) {
+          toast({
+            title: "جاري المزامنة...",
+            description: "جاري جلب البيانات من المنصة...",
+          });
 
-        toast({
-          title: "تم بنجاح",
-          description: "تم إضافة البورصة بنجاح",
-        });
+          try {
+            await fetch(`/api/exchange/sync/${result.id}`, {
+              method: 'POST',
+            });
+
+            await queryClient.invalidateQueries({ queryKey: ['/api/connections'] });
+            await queryClient.invalidateQueries({ queryKey: ['/api/portfolio/summary'] });
+            await queryClient.invalidateQueries({ queryKey: ['/api/holdings'] });
+
+            toast({
+              title: "تم بنجاح",
+              description: "تم إضافة المنصة ومزامنة البيانات بنجاح",
+            });
+          } catch (syncError) {
+            toast({
+              title: "تحذير",
+              description: "تم إضافة المنصة لكن فشلت المزامنة. تحقق من مفاتيح API.",
+              variant: "destructive",
+            });
+          }
+        } else {
+          await queryClient.invalidateQueries({ queryKey: ['/api/connections'] });
+          await queryClient.invalidateQueries({ queryKey: ['/api/portfolio/summary'] });
+
+          toast({
+            title: "تم بنجاح",
+            description: "تم إضافة المنصة بنجاح",
+          });
+        }
       }
     } catch (error) {
       toast({
@@ -295,6 +323,45 @@ export default function Settings() {
     }
   };
 
+  const handleSyncExchange = async (connectionId: string) => {
+    try {
+      const connection = connections.find(c => c.id === connectionId);
+      
+      toast({
+        title: "جاري المزامنة",
+        description: `جاري جلب البيانات من ${connection?.name || 'المنصة'}...`,
+      });
+
+      const response = await fetch(`/api/exchange/sync/${connectionId}`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to sync');
+      }
+
+      const result = await response.json();
+
+      await queryClient.invalidateQueries({ queryKey: ['/api/connections'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/portfolio/summary'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/holdings'] });
+
+      toast({
+        title: "تمت المزامنة بنجاح",
+        description: `تم جلب ${result.balancesCount} عملة من ${connection?.name || 'المنصة'}`,
+      });
+    } catch (error: any) {
+      const errorMessage = error?.message || "فشل جلب البيانات";
+      toast({
+        title: "خطأ في المزامنة",
+        description: errorMessage.includes('مفتاح API') 
+          ? errorMessage 
+          : "فشل جلب البيانات من المنصة. تحقق من مفاتيح API.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <SettingsPage
       connections={connections}
@@ -302,6 +369,7 @@ export default function Settings() {
       onAddSolanaWallet={handleAddSolanaWallet}
       onRemoveConnection={handleRemoveConnection}
       onSyncWallet={handleSyncWallet}
+      onSyncExchange={handleSyncExchange}
     />
   );
 }

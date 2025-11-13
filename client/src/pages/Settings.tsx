@@ -51,17 +51,20 @@ export default function Settings() {
               c.chainId && CHAIN_NAMES[c.chainId] ? CHAIN_NAMES[c.chainId] : 'Unknown'
             ).join(', ');
             
-            let description = `تم العثور على المحفظة في ${response.networksWithData} شبكة: ${networkNames}`;
-            
             if (response.failedNetworks && response.failedNetworks.length > 0) {
               const failedNames = response.failedNetworks.map((f: any) => f.network).join(', ');
-              description += `\n\n⚠️ فشل فحص ${response.failedNetworks.length} شبكة: ${failedNames}`;
+              
+              toast({
+                title: "تحذير: فحص جزئي",
+                description: `تم العثور على المحفظة في ${response.networksWithData} شبكة: ${networkNames}\n\nفشل فحص ${response.failedNetworks.length} شبكة: ${failedNames}\n\nقد تكون Etherscan API محدودة. جرب المزامنة لاحقاً.`,
+                variant: "destructive",
+              });
+            } else {
+              toast({
+                title: "تم بنجاح",
+                description: `تم العثور على المحفظة في ${response.networksWithData} شبكة: ${networkNames}`,
+              });
             }
-            
-            toast({
-              title: "تم بنجاح",
-              description,
-            });
           } else if (response.error) {
             toast({
               title: "خطأ في الفحص",

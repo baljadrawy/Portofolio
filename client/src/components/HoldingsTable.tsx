@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 
 export interface Holding {
   id: string;
+  connectionId?: string | null;
   symbol: string;
   name: string;
   amount: number;

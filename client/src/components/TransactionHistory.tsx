@@ -6,6 +6,7 @@ import { useState } from "react";
 
 export interface Transaction {
   id: string;
+  connectionId?: string | null;
   type: 'buy' | 'sell' | 'transfer';
   asset: string;
   amount: number;

@@ -53,6 +53,23 @@ When adding a wallet address, the application automatically:
 
 ## Recent Changes (November 13, 2025)
 
+**Wallet Connection Grouping Implementation:**
+- Implemented wallet grouping by address - wallets with same address across different chains now display as single entry
+- Added CHAIN_ABBREVIATIONS mapping in shared/networks.ts for compact network badges (ETH, BSC, MATIC, ARB, OP, BASE, etc.)
+- Created groupConnectionsByAddress utility function in client/src/lib/groupConnections.ts:
+  - Normalizes addresses to lowercase for case-insensitive grouping
+  - Aggregates balances across all networks for same address
+  - Prioritizes status: error > syncing > synced
+  - Uses latest lastSync timestamp across all network connections
+- Updated ConnectedAccounts component to display:
+  - Wallet name once per address
+  - Full wallet address below name
+  - Network badges showing all chains where address has holdings
+- Updated SettingsPage to show grouped wallets with network badges
+- Dashboard and Settings both group connections by address
+- Deletion now removes all network connections for grouped wallet (case-insensitive)
+- Query invalidation ensures UI updates correctly after deletions
+
 **Unified Holdings View Implementation:**
 - Removed SourceFilter component from Dashboard to display all assets from all networks together
 - Backend now enriches each holding with chainName from connection's chainId using CHAIN_NAMES mapping

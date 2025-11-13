@@ -1,4 +1,4 @@
-import { CHAIN_ABBREVIATIONS, CHAIN_NAMES } from "@shared/networks";
+import { CHAIN_ABBREVIATIONS, CHAIN_NAMES, NON_EVM_NETWORK_NAMES } from "@shared/networks";
 
 interface RawConnection {
   id: string;
@@ -6,6 +6,8 @@ interface RawConnection {
   type: string;
   address?: string | null;
   chainId?: number | null;
+  chainNamespace?: string | null;
+  networkKey?: string | null;
   status: string;
   lastSync: string | null;
 }
@@ -19,7 +21,7 @@ export interface GroupedConnection {
   status: 'synced' | 'syncing' | 'error';
   lastSync?: Date;
   balance: number;
-  chainBadges?: Array<{ chainId: number; badge: string; name: string }>;
+  chainBadges?: Array<{ chainId?: number; networkKey?: string; badge: string; name: string }>;
 }
 
 export function groupConnectionsByAddress(
@@ -56,14 +58,25 @@ export function groupConnectionsByAddress(
     const isSyncing = conns.some(c => c.status === 'syncing');
     const status = hasError ? 'error' : (isSyncing ? 'syncing' : 'synced');
 
-    const chainBadges = conns
-      .filter(c => c.chainId)
-      .map(c => ({
-        chainId: c.chainId!,
-        badge: CHAIN_ABBREVIATIONS[c.chainId!] || `Chain ${c.chainId}`,
-        name: CHAIN_NAMES[c.chainId!] || `Chain ${c.chainId}`
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    const badges: Array<{ chainId?: number; networkKey?: string; badge: string; name: string }> = [];
+    
+    for (const c of conns) {
+      if (c.chainNamespace === 'solana' && c.networkKey) {
+        badges.push({
+          networkKey: c.networkKey,
+          badge: 'SOL',
+          name: NON_EVM_NETWORK_NAMES[c.networkKey] || c.networkKey
+        });
+      } else if (c.chainId) {
+        badges.push({
+          chainId: c.chainId,
+          badge: CHAIN_ABBREVIATIONS[c.chainId] || `Chain ${c.chainId}`,
+          name: CHAIN_NAMES[c.chainId] || `Chain ${c.chainId}`
+        });
+      }
+    }
+    
+    const chainBadges = badges.sort((a, b) => a.name.localeCompare(b.name));
 
     const displayName = conns[0].name.replace(/\s*-\s*\w+$/, '').trim() || 'Wallet';
     const originalAddress = conns[0].address || normalizedAddress;

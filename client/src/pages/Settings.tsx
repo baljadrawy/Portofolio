@@ -10,7 +10,7 @@ import { groupConnectionsByAddress } from "@/lib/groupConnections";
 export default function Settings() {
   const { toast } = useToast();
   
-  const { data: connectionsData } = useQuery<Array<{ id: string; name: string; type: string; chainId?: number | null; apiKey: string | null; address?: string | null; status: string; lastSync: string | null }>>({
+  const { data: connectionsData } = useQuery<Array<{ id: string; name: string; type: string; chainId?: number | null; chainNamespace?: string | null; networkKey?: string | null; apiKey: string | null; address?: string | null; status: string; lastSync: string | null }>>({
     queryKey: ['/api/connections'],
   });
 
@@ -28,6 +28,8 @@ export default function Settings() {
       type: conn.type,
       address: conn.address,
       chainId: conn.chainId,
+      chainNamespace: conn.chainNamespace,
+      networkKey: conn.networkKey,
       status: conn.status,
       lastSync: conn.lastSync
     })),

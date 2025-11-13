@@ -23,7 +23,7 @@ export interface ApiConnection {
   hasApiKey: boolean;
   address?: string;
   connectionIds?: string[];
-  chainBadges?: Array<{ chainId: number; badge: string; name: string }>;
+  chainBadges?: Array<{ chainId?: number; networkKey?: string; badge: string; name: string }>;
 }
 
 interface SettingsPageProps {

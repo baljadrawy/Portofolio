@@ -27,7 +27,7 @@ interface HoldingsTableProps {
 
 type SortKey = 'symbol' | 'value' | 'change24h' | 'profitLoss';
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 100;
 
 export function HoldingsTable({ holdings }: HoldingsTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('value');

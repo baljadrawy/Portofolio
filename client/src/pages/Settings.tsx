@@ -37,7 +37,7 @@ export default function Settings() {
 
         toast({
           title: "جاري الفحص...",
-          description: "جاري فحص العنوان على جميع الشبكات المدعومة",
+          description: "جاري فحص العنوان على 19 شبكة. قد يستغرق 15-20 ثانية...",
         });
 
         try {

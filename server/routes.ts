@@ -39,24 +39,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/wallet/scan-all-networks", async (req, res) => {
-    try {
-      const { address } = req.body;
-      
-      if (!address || typeof address !== 'string') {
-        return res.status(400).json({ error: "Invalid wallet address" });
-      }
+  // Helper function to delay execution
+  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-      console.log(`[Scan] Starting multi-network scan for address: ${address}`);
+  // Helper function to process chains in batches with rate limiting
+  async function scanChainsBatched(address: string, chainIds: number[]) {
+    const BATCH_SIZE = 2; // Scan 2 networks at a time (each network makes 3 API calls)
+    const DELAY_BETWEEN_BATCHES = 1500; // 1.5 second delay to stay under 5 req/sec limit
+    const results = [];
+    
+    for (let i = 0; i < chainIds.length; i += BATCH_SIZE) {
+      const batch = chainIds.slice(i, i + BATCH_SIZE);
+      const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
+      const totalBatches = Math.ceil(chainIds.length / BATCH_SIZE);
       
-      const chainIds = Object.values(SUPPORTED_CHAINS);
+      console.log(`[Scan] Processing batch ${batchNumber}/${totalBatches} (networks ${i + 1}-${Math.min(i + BATCH_SIZE, chainIds.length)} of ${chainIds.length})`);
+      
+      // Refresh existing connections before each batch to avoid duplicates
       const existingConnections = await storage.getAllConnections();
-      const createdConnections = [];
-      const failedNetworks = [];
-      const emptyNetworks = [];
       
-      const scanResults = await Promise.allSettled(
-        chainIds.map(async (chainId) => {
+      const batchResults = await Promise.allSettled(
+        batch.map(async (chainId) => {
           const chainName = CHAIN_NAMES[chainId] || `Chain ${chainId}`;
           try {
             const walletData = await etherscanService.getWalletData(address, chainId);
@@ -99,6 +102,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         })
       );
+      
+      results.push(...batchResults);
+      
+      // Add delay between batches (except after the last batch)
+      if (i + BATCH_SIZE < chainIds.length) {
+        console.log(`[Scan] Waiting ${DELAY_BETWEEN_BATCHES}ms before next batch...`);
+        await delay(DELAY_BETWEEN_BATCHES);
+      }
+    }
+    
+    return results;
+  }
+
+  app.post("/api/wallet/scan-all-networks", async (req, res) => {
+    try {
+      const { address } = req.body;
+      
+      if (!address || typeof address !== 'string') {
+        return res.status(400).json({ error: "Invalid wallet address" });
+      }
+
+      console.log(`[Scan] Starting multi-network scan for address: ${address}`);
+      
+      const chainIds = Object.values(SUPPORTED_CHAINS);
+      const createdConnections = [];
+      const failedNetworks = [];
+      const emptyNetworks = [];
+      
+      console.log(`[Scan] Will scan ${chainIds.length} networks in batches of 2 with 1.5s delays to respect Etherscan rate limits`);
+      
+      const scanResults = await scanChainsBatched(address, chainIds);
       
       for (const result of scanResults) {
         if (result.status === 'fulfilled' && result.value) {

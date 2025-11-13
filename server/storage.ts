@@ -1,22 +1,57 @@
-import { type User, type InsertUser } from "@shared/schema";
+import { 
+  type User, 
+  type InsertUser,
+  type Connection,
+  type InsertConnection,
+  type Holding,
+  type InsertHolding,
+  type Transaction,
+  type InsertTransaction
+} from "@shared/schema";
 import { randomUUID } from "crypto";
 
-// modify the interface with any CRUD methods
-// you might need
-
 export interface IStorage {
+  // User methods (legacy)
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+
+  // Connection methods
+  getAllConnections(): Promise<Connection[]>;
+  getConnection(id: string): Promise<Connection | undefined>;
+  createConnection(connection: InsertConnection): Promise<Connection>;
+  updateConnection(id: string, updates: Partial<Connection>): Promise<Connection | undefined>;
+  deleteConnection(id: string): Promise<boolean>;
+
+  // Holding methods
+  getAllHoldings(): Promise<Holding[]>;
+  getHoldingsByConnection(connectionId: string): Promise<Holding[]>;
+  getHolding(id: string): Promise<Holding | undefined>;
+  createHolding(holding: InsertHolding): Promise<Holding>;
+  updateHolding(id: string, updates: Partial<Holding>): Promise<Holding | undefined>;
+  deleteHolding(id: string): Promise<boolean>;
+  deleteHoldingsByConnection(connectionId: string): Promise<void>;
+
+  // Transaction methods
+  getAllTransactions(): Promise<Transaction[]>;
+  getTransactionsByConnection(connectionId: string): Promise<Transaction[]>;
+  createTransaction(transaction: InsertTransaction): Promise<Transaction>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<string, User>;
+  private connections: Map<string, Connection>;
+  private holdings: Map<string, Holding>;
+  private transactions: Map<string, Transaction>;
 
   constructor() {
     this.users = new Map();
+    this.connections = new Map();
+    this.holdings = new Map();
+    this.transactions = new Map();
   }
 
+  // User methods
   async getUser(id: string): Promise<User | undefined> {
     return this.users.get(id);
   }
@@ -32,6 +67,112 @@ export class MemStorage implements IStorage {
     const user: User = { ...insertUser, id };
     this.users.set(id, user);
     return user;
+  }
+
+  // Connection methods
+  async getAllConnections(): Promise<Connection[]> {
+    return Array.from(this.connections.values());
+  }
+
+  async getConnection(id: string): Promise<Connection | undefined> {
+    return this.connections.get(id);
+  }
+
+  async createConnection(insertConnection: InsertConnection): Promise<Connection> {
+    const id = randomUUID();
+    const connection: Connection = {
+      ...insertConnection,
+      id,
+      status: insertConnection.status || 'synced',
+      lastSync: new Date(),
+      createdAt: new Date(),
+    };
+    this.connections.set(id, connection);
+    return connection;
+  }
+
+  async updateConnection(id: string, updates: Partial<Connection>): Promise<Connection | undefined> {
+    const connection = this.connections.get(id);
+    if (!connection) return undefined;
+    
+    const updated = { ...connection, ...updates };
+    this.connections.set(id, updated);
+    return updated;
+  }
+
+  async deleteConnection(id: string): Promise<boolean> {
+    await this.deleteHoldingsByConnection(id);
+    return this.connections.delete(id);
+  }
+
+  // Holding methods
+  async getAllHoldings(): Promise<Holding[]> {
+    return Array.from(this.holdings.values());
+  }
+
+  async getHoldingsByConnection(connectionId: string): Promise<Holding[]> {
+    return Array.from(this.holdings.values()).filter(
+      h => h.connectionId === connectionId
+    );
+  }
+
+  async getHolding(id: string): Promise<Holding | undefined> {
+    return this.holdings.get(id);
+  }
+
+  async createHolding(insertHolding: InsertHolding): Promise<Holding> {
+    const id = randomUUID();
+    const holding: Holding = {
+      ...insertHolding,
+      id,
+      updatedAt: new Date(),
+    };
+    this.holdings.set(id, holding);
+    return holding;
+  }
+
+  async updateHolding(id: string, updates: Partial<Holding>): Promise<Holding | undefined> {
+    const holding = this.holdings.get(id);
+    if (!holding) return undefined;
+    
+    const updated = { ...holding, ...updates, updatedAt: new Date() };
+    this.holdings.set(id, updated);
+    return updated;
+  }
+
+  async deleteHolding(id: string): Promise<boolean> {
+    return this.holdings.delete(id);
+  }
+
+  async deleteHoldingsByConnection(connectionId: string): Promise<void> {
+    const holdingsToDelete = Array.from(this.holdings.values())
+      .filter(h => h.connectionId === connectionId);
+    
+    for (const holding of holdingsToDelete) {
+      this.holdings.delete(holding.id);
+    }
+  }
+
+  // Transaction methods
+  async getAllTransactions(): Promise<Transaction[]> {
+    return Array.from(this.transactions.values())
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  }
+
+  async getTransactionsByConnection(connectionId: string): Promise<Transaction[]> {
+    return Array.from(this.transactions.values())
+      .filter(t => t.connectionId === connectionId)
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  }
+
+  async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
+    const id = randomUUID();
+    const transaction: Transaction = {
+      ...insertTransaction,
+      id,
+    };
+    this.transactions.set(id, transaction);
+    return transaction;
   }
 }
 

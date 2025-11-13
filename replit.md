@@ -51,6 +51,16 @@ When adding a wallet address, the application automatically:
 - **Rate Limiting:** Free tier allows 5 requests/second; each network scan requires 3 API calls
 - **Implementation:** Sequential processing with 700ms delays ensures ~4.3 req/sec average (safely under limit)
 
+## Recent Changes (November 13, 2025)
+
+**Unified Holdings View Implementation:**
+- Removed SourceFilter component from Dashboard to display all assets from all networks together
+- Backend now enriches each holding with chainName from connection's chainId using CHAIN_NAMES mapping
+- HoldingsTable displays network name in parentheses next to asset symbol (e.g., "BTC (Ethereum)")
+- Wallet holdings show network name; exchange holdings (without chainId) show only symbol
+- Asset allocation chart now aggregates by symbol across all networks
+- All holdings displayed without filtering for unified portfolio view
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
@@ -80,10 +90,9 @@ Preferred communication style: Simple, everyday language.
 **Key UI Components**
 - PortfolioOverview: Hero section displaying total value, 24h change, profit/loss metrics
 - AssetAllocationChart: Pie/donut chart visualization using Recharts
-- HoldingsTable: Sortable table with real-time price data and performance metrics
-- TransactionHistory: Filterable transaction log with type-based categorization
+- HoldingsTable: Sortable table displaying all holdings from all networks with network name badges (e.g., "BTC (Ethereum)"), real-time price data, and performance metrics
+- TransactionHistory: Transaction log with type-based categorization
 - ConnectedAccounts: Management interface for wallets and exchange connections
-- SourceFilter: Multi-select filtering for viewing specific wallet/exchange data
 
 ### Backend Architecture
 

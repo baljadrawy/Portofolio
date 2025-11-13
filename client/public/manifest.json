@@ -1,0 +1,31 @@
+{
+  "name": "CryptoTrack Portfolio",
+  "short_name": "CryptoTrack",
+  "description": "Track your cryptocurrency portfolio across multiple wallets and exchanges",
+  "theme_color": "#1B1B2F",
+  "background_color": "#1B1B2F",
+  "display": "standalone",
+  "start_url": "/",
+  "scope": "/",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

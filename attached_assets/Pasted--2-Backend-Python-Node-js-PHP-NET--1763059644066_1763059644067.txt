@@ -1,0 +1,129 @@
+.
+	2.	بيئة تشغيل Backend
+تحتاج تختار:
+	•	لغة: مثل Python / Node.js / PHP / .NET …
+	•	مكان التشغيل:
+	•	سيرفر (VPS / Cloud)
+	•	أو تشغيل محلي للتجارب أولًا
+	3.	فهم بسيط لـ:
+	•	REST API
+	•	HTTP Request / Response
+	•	JSON (طريقة البيانات اللي ترجع من Etherscan)
+
+⸻
+
+2️⃣ فهم طريقة Etherscan API نفسها
+
+كل نداء للـ API يكون بالشكل:
+	•	عنوان أساسي:
+https://api.etherscan.io/api
+	•	باراميترات في الـ URL أو Body أهمها:
+	•	module → نوع الخدمة
+	•	action → العملية داخل الخدمة
+	•	address → عنوان المحفظة
+	•	apikey → مفتاح الـ API حقك
+
+أنت تحتاج تعرف:
+	•	أي module تستخدم؟
+	•	أي action تستخدم لكل وظيفة؟
+
+⸻
+
+3️⃣ إيش تحتاج من Etherscan عشان تبني “تطبيق محفظة”؟
+
+أولاً: رصيد المحفظة (ETH Balance)
+
+تحتاج تستخدم:
+	•	module: account
+	•	action: balance
+
+الهدف:
+	•	يعطيك الرصيد الكلي للمحفظة بوحدة wei
+	•	إنت في الـ Backend تحوّله إلى ETH (تقسم على 10¹⁸)
+
+⸻
+
+ثانيًا: تاريخ العمليات (Transactions History)
+
+عشان تجيب كل العمليات اللي دخلت وطلعت من المحفظة:
+	1.	تحويلات عادية (إرسال/استقبال ETH):
+	•	module: account
+	•	action: txlist
+	•	تعطيه:
+	•	address
+	•	startblock (عادة 0)
+	•	endblock (رقم بلوك كبير جدًا)
+	•	sort (asc أو desc)
+	2.	العمليات الداخلية (مثل حركات ناتجة عن عقود ذكية، internal tx):
+	•	module: account
+	•	action: txlistinternal
+
+الهدف من الاثنين:
+	•	تحصل على:
+	•	من (from)
+	•	إلى (to)
+	•	قيمة العملية
+	•	وقت التنفيذ (timestamp)
+	•	حالة العملية (نجحت/فشلت)
+	•	Hash العملية
+
+⸻
+
+ثالثًا: توكنات ERC-20 (USDT, LINK, …)
+
+أنت تبغى تعرف:
+	•	ما هي التوكنات اللي عند المحفظة؟
+	•	العمليات على كل توكن؟
+
+تحتاج:
+	1.	سجل تحويلات التوكنات:
+	•	module: account
+	•	action: tokentx
+هذا يرجع:
+	•	contract address للتوكن
+	•	الرصيد المتحرك في كل عملية
+	•	من/إلى
+	•	decimals حق التوكن (أحيانًا)
+	•	symbol (أحيانًا)
+	2.	رصيد توكن معين لمحفظة معينة:
+	•	module: account
+	•	action: tokenbalance
+	•	تعطيه:
+	•	contractaddress للتوكن
+	•	address للمحفظة
+
+من هذي الاثنين تقدر:
+	•	تكتشف التوكنات المستخدمة
+	•	تجيب رصيد كل توكن
+
+⸻
+
+رابعًا: NFT (ERC-721 / ERC-1155) – لو تهمك
+
+للنفت:
+	•	module: account
+	•	actions مثل: tokennfttx (حسب تحديثات Etherscan)
+
+ترجع لك:
+	•	NFT contract address
+	•	token ID
+	•	عمليات النقل
+
+⸻
+
+خامسًا: معلومات التوكن نفسه (رمز، عدد الخانات، …)
+
+إذا ما حصلت معلومات كافية من tokentx، تحتاج:
+	•	module: token أو contract (حسب توثيق Etherscan الحالي)
+	•	ممكن:
+	•	تجيب ABI للعقد
+	•	أو تستخدم endpoint يعطيك معلومات التوكن (name, symbol, decimals)
+
+في التطبيق:
+	•	تخزن:
+	•	contract address
+	•	name
+	•	symbol
+	•	decimals
+
+وتستخدمها لعرض الرص

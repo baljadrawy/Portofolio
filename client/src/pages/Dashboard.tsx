@@ -7,6 +7,7 @@ import { ConnectedAccounts, type ConnectedAccount } from "@/components/Connected
 import { Card } from "@/components/ui/card";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { groupConnectionsByAddress } from "@/lib/groupConnections";
 
 interface PortfolioSummary {
   totalValue: number;
@@ -18,7 +19,7 @@ interface PortfolioSummary {
   connectedSources: number;
   holdings: Array<Holding & { currentPrice: number; change24h: number; change24hValue: number; value: number; profitLoss: number; profitLossPercent: number; chainName?: string }>;
   transactions: Array<Transaction & { timestamp: string }>;
-  connections: Array<{ id: string; name: string; type: string; status: string; lastSync: string | null }>;
+  connections: Array<{ id: string; name: string; type: string; status: string; lastSync: string | null; address?: string | null; chainId?: number | null }>;
 }
 
 export default function Dashboard() {
@@ -61,17 +62,22 @@ export default function Dashboard() {
     timestamp: new Date(t.timestamp)
   })) || [];
 
-  const connectedAccounts: ConnectedAccount[] = portfolio?.connections.map(conn => ({
-    id: conn.id,
-    name: conn.name,
-    type: conn.type as 'wallet' | 'exchange',
-    icon: conn.name.toLowerCase(),
-    status: conn.status as 'synced' | 'syncing' | 'error',
-    lastSync: conn.lastSync ? new Date(conn.lastSync) : undefined,
-    balance: portfolio.holdings
-      .filter(h => h.connectionId === conn.id)
-      .reduce((sum, h) => sum + h.value, 0)
-  })) || [];
+  const connectedAccounts: ConnectedAccount[] = portfolio 
+    ? groupConnectionsByAddress(
+        portfolio.connections,
+        portfolio.holdings.map(h => ({ connectionId: h.connectionId!, value: h.value }))
+      ).map(group => ({
+        id: group.groupId,
+        name: group.name,
+        type: group.type,
+        icon: group.name.toLowerCase(),
+        status: group.status,
+        lastSync: group.lastSync,
+        balance: group.balance,
+        address: group.address,
+        chainBadges: group.chainBadges
+      }))
+    : [];
 
   // Calculate asset allocation for pie chart (aggregate by symbol)
   const assetAllocation = allHoldings.reduce((acc, holding) => {

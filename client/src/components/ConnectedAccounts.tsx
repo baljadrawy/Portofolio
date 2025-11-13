@@ -11,6 +11,9 @@ export interface ConnectedAccount {
   status: 'synced' | 'syncing' | 'error';
   lastSync?: Date;
   balance?: number;
+  address?: string;
+  chainId?: number;
+  chainBadges?: Array<{ chainId: number; badge: string; name: string }>;
 }
 
 interface ConnectedAccountsProps {
@@ -51,7 +54,7 @@ export function ConnectedAccounts({ accounts, onDisconnect }: ConnectedAccountsP
         {accounts.map((account) => (
           <Card key={account.id} className="p-4" data-testid={`card-account-${account.id}`}>
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-1">
                 <div className="h-10 w-10 rounded-full bg-accent flex items-center justify-center">
                   {account.type === 'wallet' ? (
                     <Wallet className="h-5 w-5" />
@@ -59,15 +62,34 @@ export function ConnectedAccounts({ accounts, onDisconnect }: ConnectedAccountsP
                     <LinkIcon className="h-5 w-5" />
                   )}
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <div className="font-semibold">{account.name}</div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  {account.address && (
+                    <div className="text-xs text-muted-foreground font-mono truncate">
+                      {account.address}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                     {getStatusIcon(account.status)}
                     <span>{getStatusText(account.status)}</span>
                     {account.lastSync && account.status === 'synced' && (
                       <span>• {account.lastSync.toLocaleTimeString()}</span>
                     )}
                   </div>
+                  {account.chainBadges && account.chainBadges.length > 0 && (
+                    <div className="flex items-center gap-1 mt-2 flex-wrap">
+                      {account.chainBadges.map((chain) => (
+                        <Badge 
+                          key={chain.chainId} 
+                          variant="secondary" 
+                          className="text-xs"
+                          title={chain.name}
+                        >
+                          {chain.badge}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-3">

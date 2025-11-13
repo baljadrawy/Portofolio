@@ -81,6 +81,33 @@ export const NATIVE_TOKENS: Record<number, { symbol: string; name: string }> = {
   [SUPPORTED_CHAINS.MOONRIVER]: { symbol: 'MOVR', name: 'Moonriver' },
 };
 
+export const CHAIN_ABBREVIATIONS: Record<number, string> = {
+  // Layer 1
+  [SUPPORTED_CHAINS.ETHEREUM]: 'ETH',
+  [SUPPORTED_CHAINS.BSC]: 'BSC',
+  [SUPPORTED_CHAINS.POLYGON]: 'MATIC',
+  [SUPPORTED_CHAINS.AVALANCHE]: 'AVAX',
+  [SUPPORTED_CHAINS.FANTOM]: 'FTM',
+  [SUPPORTED_CHAINS.GNOSIS]: 'GNO',
+  [SUPPORTED_CHAINS.CELO]: 'CELO',
+  
+  // Layer 2
+  [SUPPORTED_CHAINS.ARBITRUM_ONE]: 'ARB',
+  [SUPPORTED_CHAINS.ARBITRUM_NOVA]: 'ARB-N',
+  [SUPPORTED_CHAINS.OPTIMISM]: 'OP',
+  [SUPPORTED_CHAINS.BASE]: 'BASE',
+  [SUPPORTED_CHAINS.ZKSYNC_ERA]: 'zkSync',
+  [SUPPORTED_CHAINS.POLYGON_ZKEVM]: 'zkEVM',
+  [SUPPORTED_CHAINS.LINEA]: 'LINEA',
+  [SUPPORTED_CHAINS.SCROLL]: 'SCR',
+  [SUPPORTED_CHAINS.BLAST]: 'BLAST',
+  [SUPPORTED_CHAINS.MANTLE]: 'MNT',
+  
+  // Parachains
+  [SUPPORTED_CHAINS.MOONBEAM]: 'GLMR',
+  [SUPPORTED_CHAINS.MOONRIVER]: 'MOVR',
+};
+
 export const CHAIN_OPTIONS = [
   // Layer 1 Networks
   { value: SUPPORTED_CHAINS.ETHEREUM.toString(), label: 'Ethereum Mainnet', symbol: 'ETH', category: 'Layer 1' },

@@ -260,33 +260,38 @@ export class EtherscanService {
   async getWalletData(address: string, chainId: number = SUPPORTED_CHAINS.ETHEREUM): Promise<WalletData> {
     const warnings: string[] = [];
     const nativeToken = NATIVE_TOKENS[chainId] || { symbol: 'NATIVE', name: 'Native Token' };
+    const DELAY_BETWEEN_CALLS = 250; // 250ms delay between API calls to respect rate limits
     
-    const results = await Promise.allSettled([
-      this.getNativeBalance(address, chainId),
-      this.getTokenBalances(address, chainId),
-      this.getTransactions(address, chainId, 50)
-    ]);
-
-    const ethBalance = results[0].status === 'fulfilled' 
-      ? results[0].value 
-      : (() => {
-          warnings.push(`Failed to fetch ${nativeToken.symbol} balance: ${results[0].reason?.message || 'Unknown error'}`);
-          return '0';
-        })();
-
-    const tokens = results[1].status === 'fulfilled' 
-      ? results[1].value 
-      : (() => {
-          warnings.push(`Failed to fetch token balances: ${results[1].reason?.message || 'Unknown error'}`);
-          return [];
-        })();
-
-    const transactions = results[2].status === 'fulfilled' 
-      ? results[2].value 
-      : (() => {
-          warnings.push(`Failed to fetch transactions: ${results[2].reason?.message || 'Unknown error'}`);
-          return [];
-        })();
+    // Helper to add delay
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+    
+    // Fetch balance
+    let ethBalance = '0';
+    try {
+      ethBalance = await this.getNativeBalance(address, chainId);
+    } catch (error: any) {
+      warnings.push(`Failed to fetch ${nativeToken.symbol} balance: ${error?.message || 'Unknown error'}`);
+    }
+    
+    await delay(DELAY_BETWEEN_CALLS);
+    
+    // Fetch tokens
+    let tokens: TokenInfo[] = [];
+    try {
+      tokens = await this.getTokenBalances(address, chainId);
+    } catch (error: any) {
+      warnings.push(`Failed to fetch token balances: ${error?.message || 'Unknown error'}`);
+    }
+    
+    await delay(DELAY_BETWEEN_CALLS);
+    
+    // Fetch transactions
+    let transactions: EtherscanTransaction[] = [];
+    try {
+      transactions = await this.getTransactions(address, chainId, 50);
+    } catch (error: any) {
+      warnings.push(`Failed to fetch transactions: ${error?.message || 'Unknown error'}`);
+    }
 
     return {
       ethBalance,

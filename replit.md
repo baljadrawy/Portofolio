@@ -35,16 +35,21 @@ The application supports **19 EVM-compatible blockchain networks** via Etherscan
 
 **Multi-Network Wallet Scanning:**
 When adding a wallet address, the application automatically:
-1. Scans all 19 networks in parallel using Promise.allSettled
+1. Scans all 19 networks sequentially with rate limiting to respect Etherscan API limits
 2. Creates separate connections for each network containing balances or tokens
-3. Handles partial failures gracefully (some networks succeed while others fail)
-4. Displays clear status messages (success, partial failure, complete failure, no data)
+3. Refreshes existing connections before each network to prevent duplicates
+4. Processes one network at a time with 700ms delays between networks
+5. Handles partial failures gracefully (some networks succeed while others fail)
+6. Displays clear status messages (success, partial failure, complete failure, no data)
+7. Takes approximately 20-25 seconds to complete full scan
 
 **API Integration:**
 - Uses Etherscan API v2 with unified endpoint (`https://api.etherscan.io/v2/api`)
 - Single API key works across all supported networks
 - Each request includes `chainid` parameter to specify target network
 - Supports native balance queries, token balance queries, and transaction history
+- **Rate Limiting:** Free tier allows 5 requests/second; each network scan requires 3 API calls
+- **Implementation:** Sequential processing with 700ms delays ensures ~4.3 req/sec average (safely under limit)
 
 ## User Preferences
 

@@ -42,73 +42,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Helper function to delay execution
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-  // Helper function to process chains in batches with rate limiting
+  // Helper function to process chains sequentially with rate limiting
   async function scanChainsBatched(address: string, chainIds: number[]) {
-    const BATCH_SIZE = 2; // Scan 2 networks at a time (each network makes 3 API calls)
-    const DELAY_BETWEEN_BATCHES = 1500; // 1.5 second delay to stay under 5 req/sec limit
+    const DELAY_BETWEEN_NETWORKS = 700; // 700ms delay between networks (3 calls per network = ~4.3 req/sec)
     const results = [];
     
-    for (let i = 0; i < chainIds.length; i += BATCH_SIZE) {
-      const batch = chainIds.slice(i, i + BATCH_SIZE);
-      const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
-      const totalBatches = Math.ceil(chainIds.length / BATCH_SIZE);
+    for (let i = 0; i < chainIds.length; i++) {
+      const chainId = chainIds[i];
+      const chainName = CHAIN_NAMES[chainId] || `Chain ${chainId}`;
       
-      console.log(`[Scan] Processing batch ${batchNumber}/${totalBatches} (networks ${i + 1}-${Math.min(i + BATCH_SIZE, chainIds.length)} of ${chainIds.length})`);
+      console.log(`[Scan] Processing network ${i + 1}/${chainIds.length}: ${chainName}`);
       
-      // Refresh existing connections before each batch to avoid duplicates
+      // Refresh existing connections before each network to avoid duplicates
       const existingConnections = await storage.getAllConnections();
       
-      const batchResults = await Promise.allSettled(
-        batch.map(async (chainId) => {
-          const chainName = CHAIN_NAMES[chainId] || `Chain ${chainId}`;
-          try {
-            const walletData = await etherscanService.getWalletData(address, chainId);
+      try {
+        const walletData = await etherscanService.getWalletData(address, chainId);
+        
+        const hasNativeBalance = parseFloat(walletData.ethBalance || '0') > 0;
+        const hasTokens = walletData.tokens && walletData.tokens.length > 0;
+        
+        if (hasNativeBalance || hasTokens) {
+          const nativeToken = NATIVE_TOKENS[chainId];
+          
+          const existing = existingConnections.find(
+            c => c.address?.toLowerCase() === address.toLowerCase() && c.chainId === chainId
+          );
+          
+          if (existing) {
+            console.log(`[Scan] Connection already exists for ${chainName}, skipping`);
+            results.push({ status: 'fulfilled', value: { chainId, chainName, connection: existing, created: false, status: 'exists' } });
+          } else {
+            const connection = await storage.createConnection({
+              name: `Wallet - ${chainName}`,
+              type: 'wallet',
+              address: address,
+              chainId: chainId,
+              status: 'connected'
+            });
             
-            const hasNativeBalance = parseFloat(walletData.ethBalance || '0') > 0;
-            const hasTokens = walletData.tokens && walletData.tokens.length > 0;
+            console.log(`[Scan] Created connection for ${chainName} (${hasTokens ? walletData.tokens.length : 0} tokens, ${nativeToken.symbol}: ${walletData.ethBalance})`);
             
-            if (hasNativeBalance || hasTokens) {
-              const nativeToken = NATIVE_TOKENS[chainId];
-              
-              const existing = existingConnections.find(
-                c => c.address?.toLowerCase() === address.toLowerCase() && c.chainId === chainId
-              );
-              
-              if (existing) {
-                console.log(`[Scan] Connection already exists for ${chainName}, skipping`);
-                return { chainId, chainName, connection: existing, created: false, status: 'exists' };
-              }
-              
-              const connection = await storage.createConnection({
-                name: `Wallet - ${chainName}`,
-                type: 'wallet',
-                address: address,
-                chainId: chainId,
-                status: 'connected'
-              });
-              
-              console.log(`[Scan] Created connection for ${chainName} (${hasTokens ? walletData.tokens.length : 0} tokens, ${nativeToken.symbol}: ${walletData.ethBalance})`);
-              
-              return { chainId, chainName, connection, created: true, status: 'created' };
-            } else {
-              console.log(`[Scan] No data found on ${chainName}`);
-              return { chainId, chainName, status: 'empty' };
-            }
-          } catch (error: any) {
-            const errorMsg = error?.message || String(error);
-            console.error(`[Scan] Error scanning ${chainName}:`, errorMsg);
-            
-            return { chainId, chainName, status: 'error', error: errorMsg };
+            results.push({ status: 'fulfilled', value: { chainId, chainName, connection, created: true, status: 'created' } });
           }
-        })
-      );
+        } else {
+          console.log(`[Scan] No data found on ${chainName}`);
+          results.push({ status: 'fulfilled', value: { chainId, chainName, status: 'empty' } });
+        }
+      } catch (error: any) {
+        const errorMsg = error?.message || String(error);
+        console.error(`[Scan] Error scanning ${chainName}:`, errorMsg);
+        
+        results.push({ status: 'fulfilled', value: { chainId, chainName, status: 'error', error: errorMsg } });
+      }
       
-      results.push(...batchResults);
-      
-      // Add delay between batches (except after the last batch)
-      if (i + BATCH_SIZE < chainIds.length) {
-        console.log(`[Scan] Waiting ${DELAY_BETWEEN_BATCHES}ms before next batch...`);
-        await delay(DELAY_BETWEEN_BATCHES);
+      // Add delay between networks (except after the last one)
+      if (i < chainIds.length - 1) {
+        await delay(DELAY_BETWEEN_NETWORKS);
       }
     }
     
@@ -130,7 +120,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const failedNetworks = [];
       const emptyNetworks = [];
       
-      console.log(`[Scan] Will scan ${chainIds.length} networks in batches of 2 with 1.5s delays to respect Etherscan rate limits`);
+      console.log(`[Scan] Will scan ${chainIds.length} networks sequentially with 700ms delays to respect Etherscan rate limits`);
       
       const scanResults = await scanChainsBatched(address, chainIds);
       

@@ -173,8 +173,12 @@ export default function Dashboard() {
             <AssetAllocationChart assets={assetAllocation} />
           )}
 
-          {allHoldings.length > 0 && (
+          {allHoldings.length > 0 ? (
             <HoldingsTable holdings={allHoldings} />
+          ) : (
+            <Card className="p-8 text-center">
+              <p className="text-muted-foreground" data-testid="text-no-holdings">لا توجد أصول حتى الآن</p>
+            </Card>
           )}
         </TabsContent>
         
@@ -183,7 +187,7 @@ export default function Dashboard() {
             <TransactionHistory transactions={allTransactions} />
           ) : (
             <Card className="p-8 text-center">
-              <p className="text-muted-foreground">لا توجد معاملات حتى الآن</p>
+              <p className="text-muted-foreground" data-testid="text-no-transactions">لا توجد معاملات حتى الآن</p>
             </Card>
           )}
         </TabsContent>

@@ -91,9 +91,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid wallet connection" });
       }
 
+      console.log(`[Wallet Sync] Starting sync for wallet: ${connection.name} (${connection.address})`);
+
       await storage.updateConnection(connection.id, { status: 'syncing' });
 
       const walletData = await etherscanService.getWalletData(connection.address);
+
+      console.log(`[Wallet Sync] Received data - ETH: ${walletData.ethBalance}, Tokens: ${walletData.tokens.length}, Transactions: ${walletData.transactions.length}`);
+      
+      if (walletData.warnings && walletData.warnings.length > 0) {
+        console.warn('[Wallet Sync] Warnings:', walletData.warnings);
+      }
 
       await storage.deleteHoldingsByConnection(connection.id);
 
@@ -105,6 +113,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           amount: walletData.ethBalance,
           avgCost: '0'
         });
+        console.log(`[Wallet Sync] Added ETH holding: ${walletData.ethBalance}`);
       }
 
       for (const token of walletData.tokens) {
@@ -116,6 +125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             amount: token.balance,
             avgCost: '0'
           });
+          console.log(`[Wallet Sync] Added token: ${token.symbol} (${token.balance})`);
         }
       }
 
@@ -138,24 +148,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await storage.updateConnection(connection.id, { 
-        status: 'synced',
+        status: walletData.warnings && walletData.warnings.length > 0 ? 'synced' : 'synced',
         lastSync: new Date()
       });
+
+      console.log(`[Wallet Sync] Completed sync for wallet: ${connection.name}`);
 
       res.json({ 
         success: true,
         ethBalance: walletData.ethBalance,
         tokensCount: walletData.tokens.length,
-        transactionsCount: walletData.transactions.length
+        transactionsCount: walletData.transactions.length,
+        warnings: walletData.warnings
       });
     } catch (error) {
-      console.error('Wallet sync error:', error);
+      console.error('[Wallet Sync] Fatal error:', error);
       
       if (req.params.connectionId) {
         await storage.updateConnection(req.params.connectionId, { status: 'error' });
       }
       
-      res.status(500).json({ error: "Failed to sync wallet data" });
+      const errorMessage = error instanceof Error ? error.message : "Failed to sync wallet data";
+      res.status(500).json({ error: errorMessage });
     }
   });
 

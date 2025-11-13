@@ -47,6 +47,7 @@ interface WalletData {
   ethBalance: string;
   tokens: TokenInfo[];
   transactions: EtherscanTransaction[];
+  warnings?: string[];
 }
 
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY;
@@ -175,16 +176,40 @@ export class EtherscanService {
   }
 
   async getWalletData(address: string): Promise<WalletData> {
-    const [ethBalance, tokens, transactions] = await Promise.all([
+    const warnings: string[] = [];
+    
+    const results = await Promise.allSettled([
       this.getEthBalance(address),
       this.getTokenBalances(address),
       this.getTransactions(address, 50)
     ]);
 
+    const ethBalance = results[0].status === 'fulfilled' 
+      ? results[0].value 
+      : (() => {
+          warnings.push(`Failed to fetch ETH balance: ${results[0].reason?.message || 'Unknown error'}`);
+          return '0';
+        })();
+
+    const tokens = results[1].status === 'fulfilled' 
+      ? results[1].value 
+      : (() => {
+          warnings.push(`Failed to fetch token balances: ${results[1].reason?.message || 'Unknown error'}`);
+          return [];
+        })();
+
+    const transactions = results[2].status === 'fulfilled' 
+      ? results[2].value 
+      : (() => {
+          warnings.push(`Failed to fetch transactions: ${results[2].reason?.message || 'Unknown error'}`);
+          return [];
+        })();
+
     return {
       ethBalance,
       tokens,
-      transactions
+      transactions,
+      warnings: warnings.length > 0 ? warnings : undefined
     };
   }
 }

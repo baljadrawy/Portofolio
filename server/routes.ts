@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { insertConnectionSchema, insertHoldingSchema, insertTransactionSchema } from "@shared/schema";
 import { etherscanService } from "./services/etherscan";
 import { solscanService } from "./services/solscan";
+import { binanceService } from "./services/binance";
 import { SUPPORTED_CHAINS, NATIVE_TOKENS, CHAIN_NAMES, NON_EVM_NETWORKS, NON_EVM_NETWORK_NAMES, NON_EVM_NATIVE_TOKENS } from "@shared/networks";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -443,6 +444,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const errorMessage = error instanceof Error ? error.message : "Failed to sync wallet data";
+      res.status(500).json({ error: errorMessage });
+    }
+  });
+
+  // Sync exchange data
+  app.post("/api/exchange/sync/:connectionId", async (req, res) => {
+    try {
+      const connection = await storage.getConnection(req.params.connectionId);
+      
+      if (!connection) {
+        return res.status(404).json({ error: "Connection not found" });
+      }
+
+      if (connection.type !== 'exchange') {
+        return res.status(400).json({ error: "Invalid exchange connection" });
+      }
+
+      if (!connection.apiKey || !connection.apiSecret) {
+        return res.status(400).json({ error: "API keys not configured for this exchange" });
+      }
+
+      await storage.updateConnection(connection.id, { status: 'syncing' });
+
+      console.log(`[Exchange Sync] Starting sync for exchange: ${connection.name}`);
+
+      const accountData = await binanceService.getAccountData(connection.apiKey, connection.apiSecret);
+      
+      console.log(`[Exchange Sync] Received data - Balances: ${accountData.balances.length}`);
+      
+      await storage.deleteHoldingsByConnection(connection.id);
+
+      let addedCount = 0;
+      for (const balance of accountData.balances) {
+        if (parseFloat(balance.total) > 0) {
+          await storage.createHolding({
+            connectionId: connection.id,
+            symbol: balance.asset,
+            name: balance.name,
+            amount: balance.total,
+            avgCost: '0'
+          });
+          console.log(`[Exchange Sync] Added ${balance.asset}: ${balance.total}`);
+          addedCount++;
+        }
+      }
+
+      await storage.updateConnection(connection.id, { 
+        status: 'synced',
+        lastSync: new Date()
+      });
+
+      console.log(`[Exchange Sync] Completed sync for exchange: ${connection.name}`);
+
+      res.json({ 
+        success: true,
+        balancesCount: addedCount,
+        canTrade: accountData.canTrade,
+        canWithdraw: accountData.canWithdraw
+      });
+    } catch (error) {
+      console.error('[Exchange Sync] Fatal error:', error);
+      
+      if (req.params.connectionId) {
+        await storage.updateConnection(req.params.connectionId, { status: 'error' });
+      }
+      
+      const errorMessage = error instanceof Error ? error.message : "Failed to sync exchange data";
       res.status(500).json({ error: errorMessage });
     }
   });

@@ -25,6 +25,10 @@ export const SUPPORTED_CHAINS = {
   MOONRIVER: 1285,
 } as const;
 
+export const NON_EVM_NETWORKS = {
+  SOLANA: 'solana',
+} as const;
+
 export type ChainId = typeof SUPPORTED_CHAINS[keyof typeof SUPPORTED_CHAINS];
 
 export const CHAIN_NAMES: Record<number, string> = {
@@ -54,6 +58,10 @@ export const CHAIN_NAMES: Record<number, string> = {
   [SUPPORTED_CHAINS.MOONRIVER]: 'Moonriver',
 };
 
+export const NON_EVM_NETWORK_NAMES: Record<string, string> = {
+  [NON_EVM_NETWORKS.SOLANA]: 'Solana',
+};
+
 export const NATIVE_TOKENS: Record<number, { symbol: string; name: string }> = {
   // Layer 1
   [SUPPORTED_CHAINS.ETHEREUM]: { symbol: 'ETH', name: 'Ethereum' },
@@ -81,6 +89,10 @@ export const NATIVE_TOKENS: Record<number, { symbol: string; name: string }> = {
   [SUPPORTED_CHAINS.MOONRIVER]: { symbol: 'MOVR', name: 'Moonriver' },
 };
 
+export const NON_EVM_NATIVE_TOKENS: Record<string, { symbol: string; name: string }> = {
+  [NON_EVM_NETWORKS.SOLANA]: { symbol: 'SOL', name: 'Solana' },
+};
+
 export const CHAIN_ABBREVIATIONS: Record<number, string> = {
   // Layer 1
   [SUPPORTED_CHAINS.ETHEREUM]: 'ETH',
@@ -106,6 +118,10 @@ export const CHAIN_ABBREVIATIONS: Record<number, string> = {
   // Parachains
   [SUPPORTED_CHAINS.MOONBEAM]: 'GLMR',
   [SUPPORTED_CHAINS.MOONRIVER]: 'MOVR',
+};
+
+export const NON_EVM_ABBREVIATIONS: Record<string, string> = {
+  [NON_EVM_NETWORKS.SOLANA]: 'SOL',
 };
 
 export const CHAIN_OPTIONS = [

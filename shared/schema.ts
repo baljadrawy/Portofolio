@@ -9,6 +9,8 @@ export const connections = pgTable("connections", {
   type: text("type").notNull(), // 'wallet' or 'exchange'
   address: text("address"), // wallet address or exchange identifier
   chainId: integer("chain_id"), // EVM chain ID (1=Ethereum, 56=BSC, 137=Polygon, 8453=Base)
+  chainNamespace: text("chain_namespace").notNull().default('evm'), // 'evm' or 'solana'
+  networkKey: text("network_key"), // For non-EVM networks like 'solana'
   apiKey: text("api_key"), // encrypted API key for exchanges
   apiSecret: text("api_secret"), // encrypted API secret for exchanges
   status: text("status").notNull().default('synced'), // 'synced', 'syncing', 'error'

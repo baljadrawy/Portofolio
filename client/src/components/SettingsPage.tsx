@@ -15,12 +15,14 @@ export interface ApiConnection {
 
 interface SettingsPageProps {
   connections: ApiConnection[];
-  onAddConnection?: (type: 'wallet' | 'exchange') => void;
+  onAddConnection?: (type: 'wallet' | 'exchange', data: { name?: string; address?: string; apiKey?: string; apiSecret?: string }) => void;
   onRemoveConnection?: (id: string) => void;
 }
 
 export function SettingsPage({ connections, onAddConnection, onRemoveConnection }: SettingsPageProps) {
+  const [newWalletName, setNewWalletName] = useState('');
   const [newWalletAddress, setNewWalletAddress] = useState('');
+  const [newExchangeName, setNewExchangeName] = useState('');
   const [newExchangeApi, setNewExchangeApi] = useState('');
   const [newExchangeSecret, setNewExchangeSecret] = useState('');
 
@@ -35,28 +37,48 @@ export function SettingsPage({ connections, onAddConnection, onRemoveConnection 
         <h3 className="text-lg font-semibold mb-4">Connected Wallets</h3>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="wallet-address">Wallet Address</Label>
-            <div className="flex gap-2">
-              <Input
-                id="wallet-address"
-                placeholder="Enter MetaMask, Solflare, or other wallet address"
-                value={newWalletAddress}
-                onChange={(e) => setNewWalletAddress(e.target.value)}
-                data-testid="input-wallet-address"
-              />
-              <Button
-                onClick={() => {
-                  console.log('Add wallet clicked', newWalletAddress);
-                  setNewWalletAddress('');
-                  onAddConnection?.('wallet');
-                }}
-                data-testid="button-add-wallet"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Wallet
-              </Button>
-            </div>
+            <Label htmlFor="wallet-name">Wallet Name</Label>
+            <Input
+              id="wallet-name"
+              placeholder="e.g., My Main MetaMask Wallet"
+              value={newWalletName}
+              onChange={(e) => setNewWalletName(e.target.value)}
+              data-testid="input-wallet-name"
+            />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="wallet-address">Wallet Address</Label>
+            <Input
+              id="wallet-address"
+              placeholder="Enter MetaMask, Solflare, or other wallet address"
+              value={newWalletAddress}
+              onChange={(e) => setNewWalletAddress(e.target.value)}
+              data-testid="input-wallet-address"
+            />
+          </div>
+          <Button
+            onClick={() => {
+              const trimmedName = newWalletName.trim();
+              const trimmedAddress = newWalletAddress.trim();
+              
+              if (!trimmedName || !trimmedAddress) {
+                return;
+              }
+              
+              onAddConnection?.('wallet', {
+                name: trimmedName,
+                address: trimmedAddress
+              });
+              setNewWalletName('');
+              setNewWalletAddress('');
+            }}
+            disabled={!newWalletName.trim() || !newWalletAddress.trim()}
+            data-testid="button-add-wallet"
+            className="w-full"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Wallet
+          </Button>
 
           <div className="space-y-2">
             {connections
@@ -101,6 +123,8 @@ export function SettingsPage({ connections, onAddConnection, onRemoveConnection 
             <Input
               id="exchange-name"
               placeholder="e.g., Binance, Coinbase, Kraken"
+              value={newExchangeName}
+              onChange={(e) => setNewExchangeName(e.target.value)}
               data-testid="input-exchange-name"
             />
           </div>
@@ -128,12 +152,26 @@ export function SettingsPage({ connections, onAddConnection, onRemoveConnection 
           </div>
           <Button
             onClick={() => {
-              console.log('Add exchange clicked');
+              const trimmedName = newExchangeName.trim();
+              const trimmedApiKey = newExchangeApi.trim();
+              const trimmedApiSecret = newExchangeSecret.trim();
+              
+              if (!trimmedName) {
+                return;
+              }
+              
+              onAddConnection?.('exchange', {
+                name: trimmedName,
+                apiKey: trimmedApiKey || undefined,
+                apiSecret: trimmedApiSecret || undefined
+              });
+              setNewExchangeName('');
               setNewExchangeApi('');
               setNewExchangeSecret('');
-              onAddConnection?.('exchange');
             }}
+            disabled={!newExchangeName.trim()}
             data-testid="button-add-exchange"
+            className="w-full"
           >
             <Plus className="h-4 w-4 mr-2" />
             Connect Exchange

@@ -207,7 +207,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const transactions = await storage.getAllTransactions();
 
       // Get unique symbols
-      const symbols = [...new Set(holdings.map(h => h.symbol.toLowerCase()))];
+      const symbols = Array.from(new Set(holdings.map(h => h.symbol.toLowerCase())));
       
       // Fetch current prices
       let prices: Record<string, { usd: number; usd_24h_change: number }> = {};

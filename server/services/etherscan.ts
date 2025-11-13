@@ -135,7 +135,12 @@ export class EtherscanService {
       const tokens: TokenInfo[] = [];
       tokenMap.forEach((tokenData) => {
         if (tokenData.balance > BigInt(0)) {
-          const divisor = BigInt(10) ** BigInt(tokenData.decimals);
+          // Calculate 10^decimals using multiplication to avoid BigInt ** operator
+          let divisor = BigInt(1);
+          for (let i = 0; i < tokenData.decimals; i++) {
+            divisor *= BigInt(10);
+          }
+          
           const wholePart = tokenData.balance / divisor;
           const remainder = tokenData.balance % divisor;
           

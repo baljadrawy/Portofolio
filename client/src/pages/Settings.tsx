@@ -40,25 +40,58 @@ export default function Settings() {
           description: "جاري فحص العنوان على جميع الشبكات المدعومة",
         });
 
-        const response = await apiRequest('POST', '/api/wallet/scan-all-networks', { address });
+        try {
+          const response: any = await apiRequest('POST', '/api/wallet/scan-all-networks', { address });
 
-        await queryClient.invalidateQueries({ queryKey: ['/api/connections'] });
-        await queryClient.invalidateQueries({ queryKey: ['/api/portfolio/summary'] });
+          await queryClient.invalidateQueries({ queryKey: ['/api/connections'] });
+          await queryClient.invalidateQueries({ queryKey: ['/api/portfolio/summary'] });
 
-        if (response.connections && response.connections.length > 0) {
-          const networkNames = response.connections.map((c: any) => 
-            c.chainId && CHAIN_NAMES[c.chainId] ? CHAIN_NAMES[c.chainId] : 'Unknown'
-          ).join(', ');
+          if (response.connections && response.connections.length > 0) {
+            const networkNames = response.connections.map((c: any) => 
+              c.chainId && CHAIN_NAMES[c.chainId] ? CHAIN_NAMES[c.chainId] : 'Unknown'
+            ).join(', ');
+            
+            let description = `تم العثور على المحفظة في ${response.networksWithData} شبكة: ${networkNames}`;
+            
+            if (response.failedNetworks && response.failedNetworks.length > 0) {
+              const failedNames = response.failedNetworks.map((f: any) => f.network).join(', ');
+              description += `\n\n⚠️ فشل فحص ${response.failedNetworks.length} شبكة: ${failedNames}`;
+            }
+            
+            toast({
+              title: "تم بنجاح",
+              description,
+            });
+          } else if (response.error) {
+            toast({
+              title: "خطأ في الفحص",
+              description: response.message || "فشل فحص جميع الشبكات. قد تكون Etherscan API محدودة مؤقتاً. حاول مرة أخرى بعد قليل.",
+              variant: "destructive",
+            });
+          } else {
+            let description = "هذا العنوان ليس لديه رصيد أو عملات في أي من الشبكات المدعومة";
+            
+            if (response.emptyNetworks && response.emptyNetworks.length > 0) {
+              description += `\n\nالشبكات المفحوصة: ${response.emptyNetworks.join(', ')}`;
+            }
+            
+            toast({
+              title: "لم يتم العثور على بيانات",
+              description,
+            });
+          }
+        } catch (error: any) {
+          const errorData = error?.data || error;
           
-          toast({
-            title: "تم بنجاح",
-            description: `تم العثور على المحفظة في ${response.networksWithData} شبكة: ${networkNames}`,
-          });
-        } else {
-          toast({
-            title: "لم يتم العثور على بيانات",
-            description: "هذا العنوان ليس لديه رصيد أو عملات في أي من الشبكات المدعومة",
-          });
+          if (errorData?.error && errorData.error.includes('API errors')) {
+            toast({
+              title: "خطأ في الاتصال",
+              description: "Etherscan API قد يكون محدوداً مؤقتاً. حاول مرة أخرى بعد دقيقة.",
+              variant: "destructive",
+            });
+          } else {
+            throw error;
+          }
         }
       } else {
         const name = data.name?.trim() || 'New Exchange';

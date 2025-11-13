@@ -8,36 +8,32 @@ export async function initializeSampleData() {
     return; // Data already initialized
   }
 
-  // Create sample connections
+  // Create sample connections - using same address on multiple networks to demonstrate multi-chain feature
+  const vitalikAddress = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
+  
   const metamask = await storage.createConnection({
-    name: "MetaMask (Ethereum)",
+    name: "Wallet - Ethereum",
     type: "wallet",
-    address: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
+    address: vitalikAddress,
     chainId: SUPPORTED_CHAINS.ETHEREUM,
     status: "synced",
   });
 
-  const bscWallet = await storage.createConnection({
-    name: "BNB Chain Wallet",
-    type: "wallet",
-    address: "0x8894E0a0c962CB723c1976a4421c95949bE2D4E3",
-    chainId: SUPPORTED_CHAINS.BSC,
-    status: "synced",
-  });
-
   const polygonWallet = await storage.createConnection({
-    name: "Polygon Wallet",
+    name: "Wallet - Polygon",
     type: "wallet",
-    address: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+    address: vitalikAddress,
     chainId: SUPPORTED_CHAINS.POLYGON,
     status: "synced",
   });
 
-  const baseWallet = await storage.createConnection({
-    name: "Base Wallet",
+  const testAddress = "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb";
+  
+  const bscWallet = await storage.createConnection({
+    name: "Wallet - BNB Smart Chain",
     type: "wallet",
-    address: "0x50Ef0e0C3e21bFE18f2Cc59b32Dd9D2E3F6d9E99",
-    chainId: SUPPORTED_CHAINS.BASE,
+    address: testAddress,
+    chainId: SUPPORTED_CHAINS.BSC,
     status: "synced",
   });
 

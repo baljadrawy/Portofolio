@@ -160,3 +160,39 @@ Preferred communication style: Simple, everyday language.
 - **Development**: Vite dev server with HMR, Express API proxy
 - **Production**: Vite builds static assets, esbuild bundles server to ESM
 - **Environment**: NODE_ENV detection, DATABASE_URL configuration required for PostgreSQL
+
+### Progressive Web App (PWA) Implementation
+
+**PWA Features**
+- **Installable**: Can be installed on Android devices like a native app
+- **Offline Support**: Service worker caches static assets and API responses for offline access
+- **App-like Experience**: Runs in standalone mode without browser UI
+- **Auto-updates**: Service worker handles automatic updates when new versions deploy
+
+**PWA Configuration**
+- **Manifest**: `/manifest.json` defines app metadata, icons, and theme colors
+  - App name: "CryptoTrack Portfolio"
+  - Theme color: #1B1B2F (dark navy matching design system)
+  - Display mode: standalone
+  - Icons: 512x512, 192x192, 96x96 (generated app icons)
+  
+- **Service Worker**: `/sw.js` implements offline caching strategy
+  - Cache version: "cryptotrack-v1"
+  - Static assets: Precached on install (HTML, CSS, JS, icons)
+  - API requests (/api/*): Network-first with cache fallback
+  - CoinGecko API: Cache-first (stale prices acceptable when offline)
+  - Navigation requests: SPA shell fallback for client-side routing
+  - Only active in production mode (skipped in development to preserve HMR)
+
+**Installation Process**
+- Detailed Arabic installation guide available in `PWA_INSTALLATION.md`
+- Users can install from Chrome/Edge browser on Android
+- Requires HTTPS deployment (production environment)
+- Works without app store distribution
+
+**Offline Behavior**
+- First load requires internet connection to cache assets
+- Subsequent loads work offline using cached data
+- Portfolio data shows last cached state when offline
+- Real-time prices resume updating when connection restored
+- Note: In-memory storage means server restart resets to demo data

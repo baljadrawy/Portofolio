@@ -95,53 +95,138 @@ export class EtherscanService {
 
   async getTokenBalances(address: string): Promise<TokenInfo[]> {
     try {
-      const url = `${ETHERSCAN_BASE_URL}?chainid=${ETHEREUM_CHAIN_ID}&module=account&action=tokenlist&address=${address}&apikey=${this.apiKey}`;
-      console.log(`[Etherscan] Fetching token list for ${address}`);
+      // First try the addresstokenbalance endpoint (v2, may require PRO subscription)
+      const url = `${ETHERSCAN_BASE_URL}?chainid=${ETHEREUM_CHAIN_ID}&module=account&action=addresstokenbalance&address=${address}&page=1&offset=1000&apikey=${this.apiKey}`;
+      console.log(`[Etherscan] Fetching token balances for ${address}`);
       const response = await fetch(url);
       const data: EtherscanTokenListResponse = await response.json();
-      console.log(`[Etherscan] Token list response status: ${data.status}, result count: ${Array.isArray(data.result) ? data.result.length : 0}`);
+      console.log(`[Etherscan] Token balance response status: ${data.status}, message: ${data.message}, result count: ${Array.isArray(data.result) ? data.result.length : 0}`);
+
+      if (data.status === '1' && Array.isArray(data.result) && data.result.length > 0) {
+        // Success! Process the token list
+        const tokens: TokenInfo[] = [];
+        
+        for (const token of data.result) {
+          const balance = BigInt(token.TokenQuantity || '0');
+          
+          if (balance > BigInt(0)) {
+            const decimals = parseInt(token.TokenDivisor || '18');
+            
+            // Calculate 10^decimals using multiplication to avoid BigInt ** operator
+            let divisor = BigInt(1);
+            for (let i = 0; i < decimals; i++) {
+              divisor *= BigInt(10);
+            }
+            
+            const wholePart = balance / divisor;
+            const remainder = balance % divisor;
+            
+            const balanceStr = remainder > BigInt(0)
+              ? `${wholePart}.${remainder.toString().padStart(decimals, '0').replace(/0+$/, '')}`
+              : wholePart.toString();
+            
+            tokens.push({
+              symbol: token.TokenSymbol || 'UNKNOWN',
+              name: token.TokenName || 'Unknown Token',
+              balance: balanceStr,
+              decimals: decimals
+            });
+            
+            console.log(`[Etherscan] Found token: ${token.TokenSymbol} - Balance: ${balanceStr}`);
+          }
+        }
+
+        console.log(`[Etherscan] Total tokens with balance: ${tokens.length}`);
+        return tokens;
+      }
+
+      // Fallback: If addresstokenbalance fails, use tokentx (token transactions) method
+      console.log(`[Etherscan] addresstokenbalance failed, falling back to tokentx method`);
+      return await this.getTokenBalancesFromTransactions(address);
+    } catch (error) {
+      console.error('Error fetching token balances:', error);
+      return [];
+    }
+  }
+
+  private async getTokenBalancesFromTransactions(address: string): Promise<TokenInfo[]> {
+    try {
+      // Fetch ALL token transactions (using high offset to get maximum results)
+      const url = `${ETHERSCAN_BASE_URL}?chainid=${ETHEREUM_CHAIN_ID}&module=account&action=tokentx&address=${address}&startblock=0&endblock=999999999&page=1&offset=10000&sort=desc&apikey=${this.apiKey}`;
+      console.log(`[Etherscan] Fetching token transactions for ${address} (fallback method)`);
+      const response = await fetch(url);
+      const data: EtherscanTxListResponse = await response.json();
+      console.log(`[Etherscan] Token TX response status: ${data.status}, result count: ${Array.isArray(data.result) ? data.result.length : 0}`);
 
       if (data.status !== '1' || !Array.isArray(data.result)) {
-        console.log(`[Etherscan] No tokens found or API error: ${data.message}`);
+        console.log(`[Etherscan] No token transactions found`);
         return [];
       }
 
-      const tokens: TokenInfo[] = [];
-      
-      for (const token of data.result) {
-        const balance = BigInt(token.TokenQuantity || '0');
-        
-        if (balance > BigInt(0)) {
-          const decimals = parseInt(token.TokenDivisor || '18');
-          
-          // Calculate 10^decimals using multiplication to avoid BigInt ** operator
-          let divisor = BigInt(1);
-          for (let i = 0; i < decimals; i++) {
-            divisor *= BigInt(10);
-          }
-          
-          const wholePart = balance / divisor;
-          const remainder = balance % divisor;
-          
-          const balanceStr = remainder > BigInt(0)
-            ? `${wholePart}.${remainder.toString().padStart(decimals, '0').replace(/0+$/, '')}`
-            : wholePart.toString();
-          
-          tokens.push({
-            symbol: token.TokenSymbol || 'UNKNOWN',
-            name: token.TokenName || 'Unknown Token',
-            balance: balanceStr,
-            decimals: decimals
+      const tokenMap = new Map<string, { symbol: string; name: string; decimals: number; balance: bigint }>();
+
+      for (const tx of data.result) {
+        const tokenAddress = (tx as any).contractAddress?.toLowerCase();
+        const tokenSymbol = (tx as any).tokenSymbol || 'UNKNOWN';
+        const tokenName = (tx as any).tokenName || 'Unknown Token';
+        const tokenDecimal = parseInt((tx as any).tokenDecimal || '18');
+        const value = BigInt((tx as any).value || '0');
+        const from = tx.from.toLowerCase();
+        const to = tx.to.toLowerCase();
+        const userAddress = address.toLowerCase();
+
+        if (!tokenAddress) continue;
+
+        if (!tokenMap.has(tokenAddress)) {
+          tokenMap.set(tokenAddress, {
+            symbol: tokenSymbol,
+            name: tokenName,
+            decimals: tokenDecimal,
+            balance: BigInt(0)
           });
-          
-          console.log(`[Etherscan] Found token: ${token.TokenSymbol} - Balance: ${balanceStr}`);
+        }
+
+        const tokenData = tokenMap.get(tokenAddress)!;
+
+        if (to === userAddress) {
+          tokenData.balance += value;
+        }
+        if (from === userAddress) {
+          tokenData.balance -= value;
         }
       }
 
-      console.log(`[Etherscan] Total tokens with balance: ${tokens.length}`);
+      const tokens: TokenInfo[] = [];
+      tokenMap.forEach((tokenData) => {
+        if (tokenData.balance > BigInt(0)) {
+          // Calculate 10^decimals using multiplication to avoid BigInt ** operator
+          let divisor = BigInt(1);
+          for (let i = 0; i < tokenData.decimals; i++) {
+            divisor *= BigInt(10);
+          }
+          
+          const wholePart = tokenData.balance / divisor;
+          const remainder = tokenData.balance % divisor;
+          
+          const balanceStr = remainder > BigInt(0)
+            ? `${wholePart}.${remainder.toString().padStart(tokenData.decimals, '0').replace(/0+$/, '')}`
+            : wholePart.toString();
+          
+          tokens.push({
+            symbol: tokenData.symbol,
+            name: tokenData.name,
+            balance: balanceStr,
+            decimals: tokenData.decimals
+          });
+          
+          console.log(`[Etherscan] Calculated token from TX: ${tokenData.symbol} - Balance: ${balanceStr}`);
+        }
+      });
+
+      console.log(`[Etherscan] Total tokens calculated from transactions: ${tokens.length}`);
       return tokens;
     } catch (error) {
-      console.error('Error fetching token balances:', error);
+      console.error('Error calculating token balances from transactions:', error);
       return [];
     }
   }

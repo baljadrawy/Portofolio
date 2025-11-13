@@ -18,6 +18,7 @@ export interface Holding {
   value: number;
   profitLoss: number;
   profitLossPercent: number;
+  chainName?: string;
 }
 
 interface HoldingsTableProps {
@@ -130,7 +131,12 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
                 <TableRow key={holding.id} data-testid={`row-holding-${holding.id}`}>
                   <TableCell>
                     <div>
-                      <div className="font-semibold">{holding.symbol}</div>
+                      <div className="font-semibold">
+                        {holding.symbol}
+                        {holding.chainName && (
+                          <span className="text-xs text-muted-foreground ml-2">({holding.chainName})</span>
+                        )}
+                      </div>
                       <div className="text-sm text-muted-foreground">{holding.name}</div>
                     </div>
                   </TableCell>

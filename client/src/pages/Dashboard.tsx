@@ -1,11 +1,9 @@
-import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { PortfolioOverview } from "@/components/PortfolioOverview";
 import { AssetAllocationChart } from "@/components/AssetAllocationChart";
 import { HoldingsTable, type Holding } from "@/components/HoldingsTable";
 import { TransactionHistory, type Transaction } from "@/components/TransactionHistory";
 import { ConnectedAccounts, type ConnectedAccount } from "@/components/ConnectedAccounts";
-import { SourceFilter, type Source } from "@/components/SourceFilter";
 import { Card } from "@/components/ui/card";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -18,7 +16,7 @@ interface PortfolioSummary {
   totalProfitLossPercent: number;
   assetsCount: number;
   connectedSources: number;
-  holdings: Array<Holding & { currentPrice: number; change24h: number; change24hValue: number; value: number; profitLoss: number; profitLossPercent: number }>;
+  holdings: Array<Holding & { currentPrice: number; change24h: number; change24hValue: number; value: number; profitLoss: number; profitLossPercent: number; chainName?: string }>;
   transactions: Array<Transaction & { timestamp: string }>;
   connections: Array<{ id: string; name: string; type: string; status: string; lastSync: string | null }>;
 }
@@ -29,36 +27,6 @@ export default function Dashboard() {
     queryKey: ['/api/portfolio/summary'],
   });
 
-  const [selectedSources, setSelectedSources] = useState<string[]>([]);
-
-  const sources: Source[] = portfolio?.connections.map(conn => ({
-    id: conn.id,
-    name: conn.name,
-    type: conn.type as 'wallet' | 'exchange'
-  })) || [];
-
-  // Initialize selected sources when data loads
-  useEffect(() => {
-    if (portfolio && selectedSources.length === 0 && sources.length > 0) {
-      setSelectedSources(sources.map(s => s.id));
-    }
-  }, [portfolio]);
-
-  const handleToggleSource = (id: string) => {
-    setSelectedSources(prev =>
-      prev.includes(id)
-        ? prev.filter(s => s !== id)
-        : [...prev, id]
-    );
-  };
-
-  const handleSelectAll = () => {
-    if (selectedSources.length === sources.length) {
-      setSelectedSources([]);
-    } else {
-      setSelectedSources(sources.map(s => s.id));
-    }
-  };
 
   const handleDisconnect = async (id: string) => {
     try {
@@ -85,17 +53,13 @@ export default function Dashboard() {
     }
   };
 
-  // Filter holdings and transactions by selected sources
-  const filteredHoldings = portfolio?.holdings.filter(h => 
-    h.connectionId && selectedSources.includes(h.connectionId)
-  ) || [];
+  // Show all holdings without filtering
+  const allHoldings = portfolio?.holdings || [];
 
-  const filteredTransactions = portfolio?.transactions
-    .filter(t => t.connectionId && selectedSources.includes(t.connectionId))
-    .map(t => ({
-      ...t,
-      timestamp: new Date(t.timestamp)
-    })) || [];
+  const allTransactions = portfolio?.transactions.map(t => ({
+    ...t,
+    timestamp: new Date(t.timestamp)
+  })) || [];
 
   const connectedAccounts: ConnectedAccount[] = portfolio?.connections.map(conn => ({
     id: conn.id,
@@ -109,14 +73,14 @@ export default function Dashboard() {
       .reduce((sum, h) => sum + h.value, 0)
   })) || [];
 
-  // Calculate asset allocation for pie chart
-  const assetAllocation = filteredHoldings.reduce((acc, holding) => {
-    const existing = acc.find(a => a.name === holding.name);
+  // Calculate asset allocation for pie chart (aggregate by symbol)
+  const assetAllocation = allHoldings.reduce((acc, holding) => {
+    const existing = acc.find(a => a.name === holding.symbol);
     if (existing) {
       existing.value += holding.value;
     } else {
       acc.push({
-        name: holding.name,
+        name: holding.symbol,
         value: holding.value,
         percentage: 0,
         color: getAssetColor(holding.symbol)
@@ -172,34 +136,17 @@ export default function Dashboard() {
         connectedSources={portfolio.connectedSources}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          {assetAllocation.length > 0 ? (
-            <AssetAllocationChart assets={assetAllocation} />
-          ) : (
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Asset Allocation</h3>
-              <p className="text-muted-foreground">No assets to display. Select sources above.</p>
-            </Card>
-          )}
-        </div>
-        <div>
-          <SourceFilter
-            sources={sources}
-            selectedSources={selectedSources}
-            onToggleSource={handleToggleSource}
-            onSelectAll={handleSelectAll}
-          />
-        </div>
-      </div>
+      {assetAllocation.length > 0 && (
+        <AssetAllocationChart assets={assetAllocation} />
+      )}
 
-      {filteredHoldings.length > 0 && (
-        <HoldingsTable holdings={filteredHoldings} />
+      {allHoldings.length > 0 && (
+        <HoldingsTable holdings={allHoldings} />
       )}
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filteredTransactions.length > 0 && (
-          <TransactionHistory transactions={filteredTransactions} />
+        {allTransactions.length > 0 && (
+          <TransactionHistory transactions={allTransactions} />
         )}
         <ConnectedAccounts accounts={connectedAccounts} onDisconnect={handleDisconnect} />
       </div>

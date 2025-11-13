@@ -81,8 +81,12 @@ export class MemStorage implements IStorage {
   async createConnection(insertConnection: InsertConnection): Promise<Connection> {
     const id = randomUUID();
     const connection: Connection = {
-      ...insertConnection,
       id,
+      name: insertConnection.name,
+      type: insertConnection.type,
+      address: insertConnection.address ?? null,
+      apiKey: insertConnection.apiKey ?? null,
+      apiSecret: insertConnection.apiSecret ?? null,
       status: insertConnection.status || 'synced',
       lastSync: new Date(),
       createdAt: new Date(),
@@ -123,8 +127,12 @@ export class MemStorage implements IStorage {
   async createHolding(insertHolding: InsertHolding): Promise<Holding> {
     const id = randomUUID();
     const holding: Holding = {
-      ...insertHolding,
       id,
+      connectionId: insertHolding.connectionId ?? null,
+      symbol: insertHolding.symbol,
+      name: insertHolding.name,
+      amount: insertHolding.amount,
+      avgCost: insertHolding.avgCost ?? '0',
       updatedAt: new Date(),
     };
     this.holdings.set(id, holding);
@@ -168,8 +176,15 @@ export class MemStorage implements IStorage {
   async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
     const id = randomUUID();
     const transaction: Transaction = {
-      ...insertTransaction,
       id,
+      connectionId: insertTransaction.connectionId ?? null,
+      type: insertTransaction.type,
+      symbol: insertTransaction.symbol,
+      amount: insertTransaction.amount,
+      price: insertTransaction.price,
+      total: insertTransaction.total,
+      timestamp: insertTransaction.timestamp,
+      source: insertTransaction.source,
     };
     this.transactions.set(id, transaction);
     return transaction;

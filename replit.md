@@ -10,6 +10,18 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (November 13, 2025)
 
+**Binance Exchange Integration:**
+- Implemented full Binance exchange integration for centralized exchange portfolio tracking
+- Created Binance service (server/services/binance.ts) using official `binance` npm package for API communication
+- Added backend endpoint: POST /api/exchange/sync/:connectionId for syncing exchange balances
+- Exchange connections use undefined chainNamespace to distinguish from blockchain wallets
+- Security improvement: API keys excluded from GET responses, only stored in memory during sync operations
+- Added exchange management UI in Settings with input fields for name, API key, and API secret
+- Sync button appears next to exchange connections when API credentials are configured (hasApiKey = true)
+- Arabic toast notifications for sync status: "جاري المزامنة" (syncing), "تمت المزامنة بنجاح" (success), "خطأ في المزامنة" (error)
+- Requires user's Binance API key and secret per connection (stored in MemStorage)
+- Successfully tested: UI flow, connection creation, sync button functionality, and error handling
+
 **Solana Blockchain Integration:**
 - Completed full Solana blockchain support with dual-namespace architecture
 - Created Solscan service (server/services/solscan.ts) with API v2 support for fetching Solana wallet data and token balances
@@ -90,6 +102,7 @@ The application uses a monorepo structure with shared TypeScript types between t
 - **Neon Database:** Serverless PostgreSQL hosting (configured for future use).
 - **Etherscan API v2:** Used for blockchain data retrieval across supported EVM networks.
 - **Solscan API v2:** Used for Solana blockchain data retrieval including wallet balances and token metadata.
+- **Binance API:** Used for exchange portfolio tracking and balance retrieval via official `binance` npm package.
 - **Cryptocurrency Price APIs:** Planned integration for real-time price data (currently uses mock data).
 
 ### Key NPM Packages

@@ -3,7 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertConnectionSchema, insertHoldingSchema, insertTransactionSchema } from "@shared/schema";
 import { etherscanService } from "./services/etherscan";
-import { SUPPORTED_CHAINS, NATIVE_TOKENS, CHAIN_NAMES } from "@shared/networks";
+import { solscanService } from "./services/solscan";
+import { SUPPORTED_CHAINS, NATIVE_TOKENS, CHAIN_NAMES, NON_EVM_NETWORKS, NON_EVM_NETWORK_NAMES, NON_EVM_NATIVE_TOKENS } from "@shared/networks";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Connection routes
@@ -190,6 +191,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Solana wallet scan endpoint
+  app.post("/api/wallet/scan-solana", async (req, res) => {
+    try {
+      const { address, name } = req.body;
+      
+      if (!address || typeof address !== 'string') {
+        return res.status(400).json({ error: "Invalid Solana wallet address" });
+      }
+
+      console.log(`[Solana Scan] Starting scan for address: ${address}`);
+      
+      const existingConnections = await storage.getAllConnections();
+      const existing = existingConnections.find(
+        c => c.address?.toLowerCase() === address.toLowerCase() && 
+             c.chainNamespace === 'solana'
+      );
+      
+      if (existing) {
+        console.log(`[Solana Scan] Connection already exists, skipping`);
+        return res.status(200).json({ 
+          connection: existing,
+          message: "Solana wallet already connected",
+          alreadyExists: true
+        });
+      }
+      
+      const walletData = await solscanService.getWalletData(address);
+      
+      const hasNativeBalance = parseFloat(walletData.solBalance || '0') > 0;
+      const hasTokens = walletData.tokens && walletData.tokens.length > 0;
+      
+      if (!hasNativeBalance && !hasTokens) {
+        console.log(`[Solana Scan] No data found for address: ${address}`);
+        return res.status(200).json({ 
+          address,
+          connection: null,
+          message: "This Solana wallet has no balance or tokens"
+        });
+      }
+      
+      const walletName = name ? `${name} - Solana` : 'Wallet - Solana';
+      const connection = await storage.createConnection({
+        name: walletName,
+        type: 'wallet',
+        address: address,
+        chainNamespace: 'solana',
+        networkKey: NON_EVM_NETWORKS.SOLANA,
+        status: 'connected'
+      });
+      
+      console.log(`[Solana Scan] Created connection (${hasTokens ? walletData.tokens.length : 0} tokens, SOL: ${walletData.solBalance})`);
+      
+      res.status(201).json({ 
+        connection,
+        message: "Solana wallet connected successfully"
+      });
+    } catch (error: any) {
+      const errorMsg = error?.message || String(error);
+      console.error('[Solana Scan] Error:', errorMsg);
+      
+      if (errorMsg.includes('SOLSCAN_API_KEY')) {
+        return res.status(500).json({ error: "Solscan API key not configured" });
+      }
+      
+      res.status(500).json({ error: "Failed to scan Solana wallet", details: errorMsg });
+    }
+  });
+
   // Holdings routes
   app.get("/api/holdings", async (_req, res) => {
     try {
@@ -230,7 +299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Sync wallet data from Etherscan
+  // Sync wallet data from Etherscan or Solscan
   app.post("/api/wallet/sync/:connectionId", async (req, res) => {
     try {
       const connection = await storage.getConnection(req.params.connectionId);
@@ -243,16 +312,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid wallet connection" });
       }
 
+      await storage.updateConnection(connection.id, { status: 'syncing' });
+
+      // Handle Solana wallets
+      if (connection.chainNamespace === 'solana') {
+        console.log(`[Wallet Sync] Starting Solana sync for wallet: ${connection.name} (${connection.address})`);
+        
+        const walletData = await solscanService.getWalletData(connection.address);
+        
+        console.log(`[Wallet Sync] Received Solana data - SOL: ${walletData.solBalance}, Tokens: ${walletData.tokens.length}`);
+        
+        await storage.deleteHoldingsByConnection(connection.id);
+
+        if (parseFloat(walletData.solBalance) > 0) {
+          await storage.createHolding({
+            connectionId: connection.id,
+            symbol: 'SOL',
+            name: 'Solana',
+            amount: walletData.solBalance,
+            avgCost: '0'
+          });
+          console.log(`[Wallet Sync] Added SOL holding: ${walletData.solBalance}`);
+        }
+
+        for (const token of walletData.tokens) {
+          if (parseFloat(token.balance) > 0) {
+            await storage.createHolding({
+              connectionId: connection.id,
+              symbol: token.symbol,
+              name: token.name,
+              amount: token.balance,
+              avgCost: '0'
+            });
+            console.log(`[Wallet Sync] Added token: ${token.symbol} (${token.balance})`);
+          }
+        }
+
+        await storage.updateConnection(connection.id, { 
+          status: 'synced',
+          lastSync: new Date()
+        });
+
+        console.log(`[Wallet Sync] Completed Solana sync for wallet: ${connection.name}`);
+
+        return res.json({ 
+          success: true,
+          solBalance: walletData.solBalance,
+          tokensCount: walletData.tokens.length,
+          transactionsCount: 0
+        });
+      }
+
+      // Handle EVM wallets
       const chainId = connection.chainId || SUPPORTED_CHAINS.ETHEREUM;
       const nativeToken = NATIVE_TOKENS[chainId] || { symbol: 'ETH', name: 'Ethereum' };
       
-      console.log(`[Wallet Sync] Starting sync for wallet: ${connection.name} (${connection.address}) on chain ${chainId}`);
-
-      await storage.updateConnection(connection.id, { status: 'syncing' });
+      console.log(`[Wallet Sync] Starting EVM sync for wallet: ${connection.name} (${connection.address}) on chain ${chainId}`);
 
       const walletData = await etherscanService.getWalletData(connection.address, chainId);
 
-      console.log(`[Wallet Sync] Received data - ${nativeToken.symbol}: ${walletData.ethBalance}, Tokens: ${walletData.tokens.length}, Transactions: ${walletData.transactions.length}`);
+      console.log(`[Wallet Sync] Received EVM data - ${nativeToken.symbol}: ${walletData.ethBalance}, Tokens: ${walletData.tokens.length}, Transactions: ${walletData.transactions.length}`);
       
       if (walletData.warnings && walletData.warnings.length > 0) {
         console.warn('[Wallet Sync] Warnings:', walletData.warnings);

@@ -155,6 +155,71 @@ export default function Settings() {
     }
   };
 
+  const handleAddSolanaWallet = async (data: { name?: string; address: string }) => {
+    try {
+      const address = data.address?.trim();
+      
+      if (!address) {
+        toast({
+          title: "خطأ",
+          description: "يرجى إدخال عنوان محفظة Solana",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "جاري الفحص...",
+        description: "جاري فحص محفظة Solana...",
+      });
+
+      try {
+        const response: any = await apiRequest('POST', '/api/wallet/scan-solana', { 
+          address,
+          name: data.name 
+        });
+
+        await queryClient.invalidateQueries({ queryKey: ['/api/connections'] });
+        await queryClient.invalidateQueries({ queryKey: ['/api/portfolio/summary'] });
+
+        if (response.alreadyExists) {
+          toast({
+            title: "المحفظة موجودة",
+            description: "هذه المحفظة متصلة بالفعل",
+          });
+        } else if (response.connection) {
+          toast({
+            title: "تم بنجاح",
+            description: "تم إضافة محفظة Solana بنجاح",
+          });
+        } else {
+          toast({
+            title: "لم يتم العثور على بيانات",
+            description: response.message || "لا توجد أرصدة في هذه المحفظة",
+          });
+        }
+      } catch (error: any) {
+        const errorData = error?.data || error;
+        
+        if (errorData?.error?.includes('SOLSCAN_API_KEY')) {
+          toast({
+            title: "خطأ في الإعداد",
+            description: "مفتاح Solscan API غير متوفر. اتصل بالمسؤول.",
+            variant: "destructive",
+          });
+        } else {
+          throw error;
+        }
+      }
+    } catch (error) {
+      toast({
+        title: "خطأ",
+        description: "فشل فحص محفظة Solana. تأكد من صحة العنوان.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleRemoveConnection = async (groupId: string) => {
     try {
       const group = connections.find(c => c.id === groupId);
@@ -232,6 +297,7 @@ export default function Settings() {
     <SettingsPage
       connections={connections}
       onAddConnection={handleAddConnection}
+      onAddSolanaWallet={handleAddSolanaWallet}
       onRemoveConnection={handleRemoveConnection}
       onSyncWallet={handleSyncWallet}
     />

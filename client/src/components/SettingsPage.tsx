@@ -29,13 +29,16 @@ export interface ApiConnection {
 interface SettingsPageProps {
   connections: ApiConnection[];
   onAddConnection?: (type: 'wallet' | 'exchange', data: { name?: string; address?: string; chainId?: number; apiKey?: string; apiSecret?: string }) => void;
+  onAddSolanaWallet?: (data: { name?: string; address: string }) => void;
   onRemoveConnection?: (id: string) => void;
   onSyncWallet?: (connectionId: string) => void;
 }
 
-export function SettingsPage({ connections, onAddConnection, onRemoveConnection, onSyncWallet }: SettingsPageProps) {
+export function SettingsPage({ connections, onAddConnection, onAddSolanaWallet, onRemoveConnection, onSyncWallet }: SettingsPageProps) {
   const [newWalletName, setNewWalletName] = useState('');
   const [newWalletAddress, setNewWalletAddress] = useState('');
+  const [newSolanaName, setNewSolanaName] = useState('');
+  const [newSolanaAddress, setNewSolanaAddress] = useState('');
   const [newExchangeName, setNewExchangeName] = useState('');
   const [newExchangeApi, setNewExchangeApi] = useState('');
   const [newExchangeSecret, setNewExchangeSecret] = useState('');
@@ -162,6 +165,58 @@ export function SettingsPage({ connections, onAddConnection, onRemoveConnection,
                 </div>
               ))}
           </div>
+        </div>
+      </Card>
+
+      <Card className="p-6">
+        <h3 className="text-lg font-semibold mb-4">محافظ Solana</h3>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="solana-name">اسم المحفظة (اختياري)</Label>
+            <Input
+              id="solana-name"
+              placeholder="مثال: محفظتي على Solana"
+              value={newSolanaName}
+              onChange={(e) => setNewSolanaName(e.target.value)}
+              data-testid="input-solana-name"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="solana-address">عنوان محفظة Solana</Label>
+            <Input
+              id="solana-address"
+              placeholder="أدخل عنوان محفظة Solana"
+              value={newSolanaAddress}
+              onChange={(e) => setNewSolanaAddress(e.target.value)}
+              data-testid="input-solana-address"
+            />
+            <p className="text-xs text-muted-foreground">
+              سيتم جلب رصيد SOL والعملات من شبكة Solana
+            </p>
+          </div>
+          <Button
+            onClick={() => {
+              const trimmedAddress = newSolanaAddress.trim();
+              const trimmedName = newSolanaName.trim();
+              
+              if (!trimmedAddress) {
+                return;
+              }
+              
+              onAddSolanaWallet?.({
+                name: trimmedName || undefined,
+                address: trimmedAddress
+              });
+              setNewSolanaName('');
+              setNewSolanaAddress('');
+            }}
+            disabled={!newSolanaAddress.trim()}
+            data-testid="button-add-solana"
+            className="w-full"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            إضافة محفظة Solana
+          </Button>
         </div>
       </Card>
 

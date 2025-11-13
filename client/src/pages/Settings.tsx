@@ -10,11 +10,16 @@ import { groupConnectionsByAddress } from "@/lib/groupConnections";
 export default function Settings() {
   const { toast } = useToast();
   
-  const { data: connectionsData } = useQuery<Array<{ id: string; name: string; type: string; chainId?: number | null; apiKey: string | null; address?: string | null }>>({
+  const { data: connectionsData } = useQuery<Array<{ id: string; name: string; type: string; chainId?: number | null; apiKey: string | null; address?: string | null; status: string; lastSync: string | null }>>({
     queryKey: ['/api/connections'],
   });
 
+  const { data: portfolioSummary } = useQuery<{ holdings: Array<{ connectionId: string; value: number }> }>({
+    queryKey: ['/api/portfolio/summary'],
+  });
+
   const rawConnections = connectionsData || [];
+  const holdings = portfolioSummary?.holdings || [];
   
   const groupedConnections = groupConnectionsByAddress(
     rawConnections.map(conn => ({
@@ -23,10 +28,10 @@ export default function Settings() {
       type: conn.type,
       address: conn.address,
       chainId: conn.chainId,
-      status: 'synced',
-      lastSync: null
+      status: conn.status,
+      lastSync: conn.lastSync
     })),
-    []
+    holdings.map(h => ({ connectionId: h.connectionId!, value: h.value }))
   );
 
   const connections: ApiConnection[] = groupedConnections.map(group => ({

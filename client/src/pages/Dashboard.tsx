@@ -29,26 +29,41 @@ export default function Dashboard() {
   });
 
 
-  const handleDisconnect = async (id: string) => {
+  const handleDisconnect = async (groupId: string) => {
     try {
-      const response = await fetch(`/api/connections/${id}`, {
-        method: 'DELETE',
-      });
+      const group = connectedAccounts.find(c => c.id === groupId);
       
-      if (!response.ok) {
-        throw new Error('Failed to delete');
+      if (!portfolio) return;
+      
+      const connectionIdsToDelete = group?.address 
+        ? portfolio.connections
+            .filter(c => c.address?.toLowerCase() === group.address.toLowerCase())
+            .map(c => c.id)
+        : [groupId];
+
+      for (const id of connectionIdsToDelete) {
+        const response = await fetch(`/api/connections/${id}`, {
+          method: 'DELETE',
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to delete');
+        }
       }
       
       await queryClient.invalidateQueries({ queryKey: ['/api/portfolio/summary'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/connections'] });
       
       toast({
-        title: "Success",
-        description: "Connection removed successfully",
+        title: "تم بنجاح",
+        description: connectionIdsToDelete.length > 1 
+          ? `تم حذف ${connectionIdsToDelete.length} اتصال من الشبكات المختلفة`
+          : "تم حذف الاتصال بنجاح",
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to remove connection",
+        title: "خطأ",
+        description: "فشل حذف الاتصال",
         variant: "destructive",
       });
     }

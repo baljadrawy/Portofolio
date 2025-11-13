@@ -31,8 +31,9 @@ export function groupConnectionsByAddress(
 
   connections.forEach(conn => {
     if (conn.type === 'wallet' && conn.address) {
-      const existing = walletGroups.get(conn.address) || [];
-      walletGroups.set(conn.address, [...existing, conn]);
+      const normalizedAddress = conn.address.toLowerCase();
+      const existing = walletGroups.get(normalizedAddress) || [];
+      walletGroups.set(normalizedAddress, [...existing, conn]);
     } else {
       exchanges.push(conn);
     }
@@ -40,7 +41,7 @@ export function groupConnectionsByAddress(
 
   const grouped: GroupedConnection[] = [];
 
-  walletGroups.forEach((conns, address) => {
+  walletGroups.forEach((conns, normalizedAddress) => {
     const connectionIds = conns.map(c => c.id);
     const balance = holdings
       .filter(h => connectionIds.includes(h.connectionId))
@@ -65,12 +66,13 @@ export function groupConnectionsByAddress(
       .sort((a, b) => a.name.localeCompare(b.name));
 
     const displayName = conns[0].name.replace(/\s*-\s*\w+$/, '').trim() || 'Wallet';
+    const originalAddress = conns[0].address || normalizedAddress;
 
     grouped.push({
-      groupId: address,
+      groupId: normalizedAddress,
       name: displayName,
       type: 'wallet',
-      address,
+      address: originalAddress,
       connectionIds,
       status: status as 'synced' | 'syncing' | 'error',
       lastSync: latestSync || undefined,

@@ -30,7 +30,7 @@ export async function initializeSampleData() {
     status: "synced",
   });
 
-  // Create sample holdings
+  // Create sample holdings (25 different tokens to test pagination and chart grouping)
   await storage.createHolding({
     connectionId: metamask.id,
     symbol: "BTC",
@@ -69,6 +69,166 @@ export async function initializeSampleData() {
     name: "Polygon",
     amount: "12000",
     avgCost: "0.68",
+  });
+
+  await storage.createHolding({
+    connectionId: binance.id,
+    symbol: "LINK",
+    name: "Chainlink",
+    amount: "500",
+    avgCost: "14.50",
+  });
+
+  await storage.createHolding({
+    connectionId: metamask.id,
+    symbol: "DOT",
+    name: "Polkadot",
+    amount: "800",
+    avgCost: "7.25",
+  });
+
+  await storage.createHolding({
+    connectionId: binance.id,
+    symbol: "AVAX",
+    name: "Avalanche",
+    amount: "300",
+    avgCost: "28.00",
+  });
+
+  await storage.createHolding({
+    connectionId: metamask.id,
+    symbol: "UNI",
+    name: "Uniswap",
+    amount: "600",
+    avgCost: "8.75",
+  });
+
+  await storage.createHolding({
+    connectionId: binance.id,
+    symbol: "ATOM",
+    name: "Cosmos",
+    amount: "1200",
+    avgCost: "9.20",
+  });
+
+  await storage.createHolding({
+    connectionId: metamask.id,
+    symbol: "XRP",
+    name: "Ripple",
+    amount: "15000",
+    avgCost: "0.52",
+  });
+
+  await storage.createHolding({
+    connectionId: binance.id,
+    symbol: "DOGE",
+    name: "Dogecoin",
+    amount: "50000",
+    avgCost: "0.085",
+  });
+
+  await storage.createHolding({
+    connectionId: metamask.id,
+    symbol: "SHIB",
+    name: "Shiba Inu",
+    amount: "10000000",
+    avgCost: "0.000015",
+  });
+
+  await storage.createHolding({
+    connectionId: binance.id,
+    symbol: "LTC",
+    name: "Litecoin",
+    amount: "45",
+    avgCost: "85.00",
+  });
+
+  await storage.createHolding({
+    connectionId: metamask.id,
+    symbol: "BCH",
+    name: "Bitcoin Cash",
+    amount: "25",
+    avgCost: "320.00",
+  });
+
+  await storage.createHolding({
+    connectionId: binance.id,
+    symbol: "XLM",
+    name: "Stellar",
+    amount: "8000",
+    avgCost: "0.12",
+  });
+
+  await storage.createHolding({
+    connectionId: metamask.id,
+    symbol: "ALGO",
+    name: "Algorand",
+    amount: "5000",
+    avgCost: "0.18",
+  });
+
+  await storage.createHolding({
+    connectionId: binance.id,
+    symbol: "VET",
+    name: "VeChain",
+    amount: "20000",
+    avgCost: "0.025",
+  });
+
+  await storage.createHolding({
+    connectionId: metamask.id,
+    symbol: "SAND",
+    name: "The Sandbox",
+    amount: "3000",
+    avgCost: "0.48",
+  });
+
+  await storage.createHolding({
+    connectionId: binance.id,
+    symbol: "MANA",
+    name: "Decentraland",
+    amount: "4000",
+    avgCost: "0.55",
+  });
+
+  await storage.createHolding({
+    connectionId: metamask.id,
+    symbol: "AAVE",
+    name: "Aave",
+    amount: "80",
+    avgCost: "95.00",
+  });
+
+  await storage.createHolding({
+    connectionId: binance.id,
+    symbol: "FTM",
+    name: "Fantom",
+    amount: "6000",
+    avgCost: "0.32",
+  });
+
+  await storage.createHolding({
+    connectionId: metamask.id,
+    symbol: "GRT",
+    name: "The Graph",
+    amount: "7000",
+    avgCost: "0.15",
+  });
+
+  await storage.createHolding({
+    connectionId: binance.id,
+    symbol: "CRV",
+    name: "Curve DAO",
+    amount: "2000",
+    avgCost: "0.85",
+  });
+
+  await storage.createHolding({
+    connectionId: solflare.id,
+    symbol: "APT",
+    name: "Aptos",
+    amount: "500",
+    avgCost: "8.50",
   });
 
   // Create sample transactions

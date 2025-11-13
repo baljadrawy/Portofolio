@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { PortfolioOverview } from "@/components/PortfolioOverview";
 import { AssetAllocationChart } from "@/components/AssetAllocationChart";
@@ -7,7 +7,7 @@ import { TransactionHistory, type Transaction } from "@/components/TransactionHi
 import { ConnectedAccounts, type ConnectedAccount } from "@/components/ConnectedAccounts";
 import { SourceFilter, type Source } from "@/components/SourceFilter";
 import { Card } from "@/components/ui/card";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 interface PortfolioSummary {
@@ -38,9 +38,11 @@ export default function Dashboard() {
   })) || [];
 
   // Initialize selected sources when data loads
-  if (portfolio && selectedSources.length === 0 && sources.length > 0) {
-    setSelectedSources(sources.map(s => s.id));
-  }
+  useEffect(() => {
+    if (portfolio && selectedSources.length === 0 && sources.length > 0) {
+      setSelectedSources(sources.map(s => s.id));
+    }
+  }, [portfolio]);
 
   const handleToggleSource = (id: string) => {
     setSelectedSources(prev =>

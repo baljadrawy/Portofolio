@@ -143,8 +143,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Calculate portfolio metrics
       let totalValue = 0;
+      let totalValueYesterday = 0;
       let totalCost = 0;
-      let change24h = 0;
 
       const holdingsWithPrices = holdings.map(holding => {
         const symbolMap: Record<string, string> = {
@@ -168,12 +168,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const value = amount * currentPrice;
         const cost = amount * avgCost;
         
+        // Calculate yesterday's price
+        const yesterdayPrice = currentPrice / (1 + change24hPercent / 100);
+        const valueYesterday = amount * yesterdayPrice;
+        
         totalValue += value;
+        totalValueYesterday += valueYesterday;
         totalCost += cost;
-        change24h += value * (change24hPercent / 100);
 
         return {
           ...holding,
+          amount,
+          avgCost,
           currentPrice,
           change24h: change24hPercent,
           value,
@@ -184,7 +190,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const totalProfitLoss = totalValue - totalCost;
       const totalProfitLossPercent = totalCost > 0 ? (totalProfitLoss / totalCost) * 100 : 0;
-      const change24hPercent = totalValue > 0 ? (change24h / (totalValue - change24h)) * 100 : 0;
+      const change24h = totalValue - totalValueYesterday;
+      const change24hPercent = totalValueYesterday > 0 ? (change24h / totalValueYesterday) * 100 : 0;
 
       res.json({
         totalValue,

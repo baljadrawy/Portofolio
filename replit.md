@@ -8,6 +8,31 @@ A comprehensive cryptocurrency portfolio tracking application that aggregates ho
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes (November 13, 2025)
+
+**Dashboard Tabs Organization:**
+- Reorganized Dashboard with tabs for better content organization
+- Tab 1: "الأصول والممتلكات" (Holdings) - Contains Asset Allocation Chart and Holdings Table
+- Tab 2: "سجل المعاملات" (Transaction History) - Dedicated tab for all transactions
+- Connected Accounts section always visible at bottom
+- Increased holdings table pagination from 10 to 100 items per page for better visibility
+
+**Custom Wallet Naming Feature:**
+- Added wallet name input field in Settings page before address field
+- Users can now provide custom names for their wallets (optional)
+- Custom names are used in format: "{CustomName} - {ChainName}" for multi-network connections
+- Updated backend scan-all-networks endpoint to accept optional `name` parameter
+- Arabic UI: "اسم المحفظة" label with placeholder "مثال: محفظتي الرئيسية"
+- If no custom name provided, defaults to "Wallet - {ChainName}" format
+
+**Wallet Connection Grouping Implementation:**
+- Implemented wallet grouping by address - wallets with same address across different chains now display as single entry
+- Added CHAIN_ABBREVIATIONS mapping in shared/networks.ts for compact network badges (ETH, BSC, MATIC, ARB, OP, BASE, etc.)
+- Created groupConnectionsByAddress utility function in client/src/lib/groupConnections.ts
+- Normalizes addresses to lowercase for case-insensitive grouping
+- Aggregates balances across all networks for same address
+- Updated ConnectedAccounts and SettingsPage components to display grouped wallets with network badges
+
 ## System Architecture
 
 ### UI/UX Decisions

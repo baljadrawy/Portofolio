@@ -5,6 +5,7 @@ import { HoldingsTable, type Holding } from "@/components/HoldingsTable";
 import { TransactionHistory, type Transaction } from "@/components/TransactionHistory";
 import { ConnectedAccounts, type ConnectedAccount } from "@/components/ConnectedAccounts";
 import { Card } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { groupConnectionsByAddress } from "@/lib/groupConnections";
@@ -37,7 +38,7 @@ export default function Dashboard() {
       
       const connectionIdsToDelete = group?.address 
         ? portfolio.connections
-            .filter(c => c.address?.toLowerCase() === group.address.toLowerCase())
+            .filter(c => c.address?.toLowerCase() === group.address?.toLowerCase())
             .map(c => c.id)
         : [groupId];
 
@@ -157,20 +158,38 @@ export default function Dashboard() {
         connectedSources={portfolio.connectedSources}
       />
 
-      {assetAllocation.length > 0 && (
-        <AssetAllocationChart assets={assetAllocation} />
-      )}
+      <Tabs defaultValue="holdings" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="holdings" data-testid="tab-holdings">
+            الأصول والممتلكات
+          </TabsTrigger>
+          <TabsTrigger value="transactions" data-testid="tab-transactions">
+            سجل المعاملات
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="holdings" className="space-y-6 mt-6">
+          {assetAllocation.length > 0 && (
+            <AssetAllocationChart assets={assetAllocation} />
+          )}
 
-      {allHoldings.length > 0 && (
-        <HoldingsTable holdings={allHoldings} />
-      )}
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {allTransactions.length > 0 && (
-          <TransactionHistory transactions={allTransactions} />
-        )}
-        <ConnectedAccounts accounts={connectedAccounts} onDisconnect={handleDisconnect} />
-      </div>
+          {allHoldings.length > 0 && (
+            <HoldingsTable holdings={allHoldings} />
+          )}
+        </TabsContent>
+        
+        <TabsContent value="transactions" className="space-y-6 mt-6">
+          {allTransactions.length > 0 ? (
+            <TransactionHistory transactions={allTransactions} />
+          ) : (
+            <Card className="p-8 text-center">
+              <p className="text-muted-foreground">لا توجد معاملات حتى الآن</p>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
+
+      <ConnectedAccounts accounts={connectedAccounts} onDisconnect={handleDisconnect} />
     </div>
   );
 }

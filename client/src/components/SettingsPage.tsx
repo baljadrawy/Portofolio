@@ -31,9 +31,7 @@ interface SettingsPageProps {
 }
 
 export function SettingsPage({ connections, onAddConnection, onRemoveConnection, onSyncWallet }: SettingsPageProps) {
-  const [newWalletName, setNewWalletName] = useState('');
   const [newWalletAddress, setNewWalletAddress] = useState('');
-  const [newWalletChain, setNewWalletChain] = useState(SUPPORTED_CHAINS.ETHEREUM.toString());
   const [newExchangeName, setNewExchangeName] = useState('');
   const [newExchangeApi, setNewExchangeApi] = useState('');
   const [newExchangeSecret, setNewExchangeSecret] = useState('');
@@ -49,31 +47,6 @@ export function SettingsPage({ connections, onAddConnection, onRemoveConnection,
         <h3 className="text-lg font-semibold mb-4">Connected Wallets</h3>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="wallet-name">Wallet Name</Label>
-            <Input
-              id="wallet-name"
-              placeholder="e.g., My Main MetaMask Wallet"
-              value={newWalletName}
-              onChange={(e) => setNewWalletName(e.target.value)}
-              data-testid="input-wallet-name"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="wallet-network">Network</Label>
-            <Select value={newWalletChain} onValueChange={setNewWalletChain}>
-              <SelectTrigger id="wallet-network" data-testid="select-network">
-                <SelectValue placeholder="Select network" />
-              </SelectTrigger>
-              <SelectContent>
-                {CHAIN_OPTIONS.map((chain) => (
-                  <SelectItem key={chain.value} value={chain.value}>
-                    {chain.label} ({chain.symbol})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
             <Label htmlFor="wallet-address">Wallet Address</Label>
             <Input
               id="wallet-address"
@@ -82,32 +55,29 @@ export function SettingsPage({ connections, onAddConnection, onRemoveConnection,
               onChange={(e) => setNewWalletAddress(e.target.value)}
               data-testid="input-wallet-address"
             />
+            <p className="text-xs text-muted-foreground">
+              سيتم فحص العنوان على جميع الشبكات المدعومة تلقائياً (Ethereum, BNB Chain, Polygon, Base)
+            </p>
           </div>
           <Button
             onClick={() => {
-              const trimmedName = newWalletName.trim();
               const trimmedAddress = newWalletAddress.trim();
-              const chainId = parseInt(newWalletChain);
               
-              if (!trimmedName || !trimmedAddress) {
+              if (!trimmedAddress) {
                 return;
               }
               
               onAddConnection?.('wallet', {
-                name: trimmedName,
-                address: trimmedAddress,
-                chainId: chainId
+                address: trimmedAddress
               });
-              setNewWalletName('');
               setNewWalletAddress('');
-              setNewWalletChain(SUPPORTED_CHAINS.ETHEREUM.toString());
             }}
-            disabled={!newWalletName.trim() || !newWalletAddress.trim()}
+            disabled={!newWalletAddress.trim()}
             data-testid="button-add-wallet"
             className="w-full"
           >
             <Plus className="h-4 w-4 mr-2" />
-            Add Wallet
+            Add Wallet & Scan All Networks
           </Button>
 
           <div className="space-y-2">

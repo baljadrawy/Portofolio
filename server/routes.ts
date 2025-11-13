@@ -2,7 +2,8 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertConnectionSchema, insertHoldingSchema, insertTransactionSchema } from "@shared/schema";
-import { etherscanService, SUPPORTED_CHAINS, NATIVE_TOKENS } from "./services/etherscan";
+import { etherscanService } from "./services/etherscan";
+import { SUPPORTED_CHAINS, NATIVE_TOKENS, CHAIN_NAMES } from "@shared/networks";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Connection routes
@@ -35,6 +36,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       res.status(500).json({ error: "Failed to delete connection" });
+    }
+  });
+
+  app.post("/api/wallet/scan-all-networks", async (req, res) => {
+    try {
+      const { address } = req.body;
+      
+      if (!address || typeof address !== 'string') {
+        return res.status(400).json({ error: "Invalid wallet address" });
+      }
+
+      console.log(`[Scan] Starting multi-network scan for address: ${address}`);
+      
+      const chainIds = Object.values(SUPPORTED_CHAINS);
+      const existingConnections = await storage.getAllConnections();
+      const createdConnections = [];
+      
+      const scanResults = await Promise.allSettled(
+        chainIds.map(async (chainId) => {
+          try {
+            const walletData = await etherscanService.getWalletData(address, chainId);
+            
+            const hasNativeBalance = parseFloat(walletData.ethBalance || '0') > 0;
+            const hasTokens = walletData.tokens && walletData.tokens.length > 0;
+            
+            if (hasNativeBalance || hasTokens) {
+              const nativeToken = NATIVE_TOKENS[chainId];
+              const chainName = CHAIN_NAMES[chainId] || `Chain ${chainId}`;
+              
+              const existing = existingConnections.find(
+                c => c.address?.toLowerCase() === address.toLowerCase() && c.chainId === chainId
+              );
+              
+              if (existing) {
+                console.log(`[Scan] Connection already exists for ${chainName}, skipping`);
+                return { chainId, connection: existing, created: false };
+              }
+              
+              const connection = await storage.createConnection({
+                name: `Wallet - ${chainName}`,
+                type: 'wallet',
+                address: address,
+                chainId: chainId,
+                status: 'connected'
+              });
+              
+              console.log(`[Scan] Created connection for ${chainName} (${hasTokens ? walletData.tokens.length : 0} tokens, ${nativeToken.symbol}: ${walletData.ethBalance})`);
+              
+              return { chainId, connection, created: true };
+            } else {
+              console.log(`[Scan] No data found on ${CHAIN_NAMES[chainId]}`);
+              return null;
+            }
+          } catch (error) {
+            console.error(`[Scan] Error scanning ${CHAIN_NAMES[chainId]}:`, error);
+            return null;
+          }
+        })
+      );
+      
+      for (const result of scanResults) {
+        if (result.status === 'fulfilled' && result.value) {
+          createdConnections.push(result.value);
+        }
+      }
+      
+      if (createdConnections.length === 0) {
+        console.log(`[Scan] No data found on any network for address: ${address}`);
+        return res.status(200).json({ 
+          address,
+          connections: [],
+          networksScanned: chainIds.length,
+          networksWithData: 0,
+          message: "This wallet address has no balance or tokens on any supported network" 
+        });
+      }
+      
+      console.log(`[Scan] Completed: ${createdConnections.filter(c => c.created).length} new connections created`);
+      
+      res.status(201).json({
+        address,
+        connections: createdConnections.map(c => c.connection),
+        networksScanned: chainIds.length,
+        networksWithData: createdConnections.length
+      });
+    } catch (error) {
+      console.error('[Scan] Error:', error);
+      res.status(500).json({ error: "Failed to scan wallet across networks" });
     }
   });
 

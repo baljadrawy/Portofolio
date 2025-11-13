@@ -23,41 +23,69 @@ export default function Settings() {
 
   const handleAddConnection = async (type: 'wallet' | 'exchange', data: { name?: string; address?: string; chainId?: number; apiKey?: string; apiSecret?: string }) => {
     try {
-      const name = data.name?.trim() || (type === 'wallet' ? 'New Wallet' : 'New Exchange');
-      
-      const payload: Partial<InsertConnection> = {
-        name,
-        type,
-        status: 'synced' as const,
-      };
-
       if (type === 'wallet') {
-        if (data.address?.trim()) {
-          payload.address = data.address.trim();
+        const address = data.address?.trim();
+        
+        if (!address) {
+          toast({
+            title: "خطأ",
+            description: "يرجى إدخال عنوان المحفظة",
+            variant: "destructive",
+          });
+          return;
         }
-        if (data.chainId) {
-          payload.chainId = data.chainId;
-        }
-      }
 
-      if (type === 'exchange') {
+        toast({
+          title: "جاري الفحص...",
+          description: "جاري فحص العنوان على جميع الشبكات المدعومة",
+        });
+
+        const response = await apiRequest('POST', '/api/wallet/scan-all-networks', { address });
+
+        await queryClient.invalidateQueries({ queryKey: ['/api/connections'] });
+        await queryClient.invalidateQueries({ queryKey: ['/api/portfolio/summary'] });
+
+        if (response.connections && response.connections.length > 0) {
+          const networkNames = response.connections.map((c: any) => 
+            c.chainId && CHAIN_NAMES[c.chainId] ? CHAIN_NAMES[c.chainId] : 'Unknown'
+          ).join(', ');
+          
+          toast({
+            title: "تم بنجاح",
+            description: `تم العثور على المحفظة في ${response.networksWithData} شبكة: ${networkNames}`,
+          });
+        } else {
+          toast({
+            title: "لم يتم العثور على بيانات",
+            description: "هذا العنوان ليس لديه رصيد أو عملات في أي من الشبكات المدعومة",
+          });
+        }
+      } else {
+        const name = data.name?.trim() || 'New Exchange';
+        
+        const payload: Partial<InsertConnection> = {
+          name,
+          type: 'exchange',
+          status: 'synced' as const,
+        };
+
         if (data.apiKey?.trim()) {
           payload.apiKey = data.apiKey.trim();
         }
         if (data.apiSecret?.trim()) {
           payload.apiSecret = data.apiSecret.trim();
         }
+        
+        await apiRequest('POST', '/api/connections', payload);
+
+        await queryClient.invalidateQueries({ queryKey: ['/api/connections'] });
+        await queryClient.invalidateQueries({ queryKey: ['/api/portfolio/summary'] });
+
+        toast({
+          title: "تم بنجاح",
+          description: "تم إضافة البورصة بنجاح",
+        });
       }
-      
-      await apiRequest('POST', '/api/connections', payload);
-
-      await queryClient.invalidateQueries({ queryKey: ['/api/connections'] });
-      await queryClient.invalidateQueries({ queryKey: ['/api/portfolio/summary'] });
-
-      toast({
-        title: "تم بنجاح",
-        description: `تم إضافة ${type === 'wallet' ? 'المحفظة' : 'البورصة'} بنجاح`,
-      });
     } catch (error) {
       toast({
         title: "خطأ",

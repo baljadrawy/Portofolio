@@ -4,22 +4,41 @@ import { SettingsPage, type ApiConnection } from "@/components/SettingsPage";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { InsertConnection } from "@shared/schema";
-import { CHAIN_NAMES } from "@shared/networks";
+import { CHAIN_NAMES, CHAIN_ABBREVIATIONS } from "@shared/networks";
+import { groupConnectionsByAddress } from "@/lib/groupConnections";
 
 export default function Settings() {
   const { toast } = useToast();
   
-  const { data: connectionsData } = useQuery<Array<{ id: string; name: string; type: string; chainId?: number | null; apiKey: string | null }>>({
+  const { data: connectionsData } = useQuery<Array<{ id: string; name: string; type: string; chainId?: number | null; apiKey: string | null; address?: string | null }>>({
     queryKey: ['/api/connections'],
   });
 
-  const connections: ApiConnection[] = connectionsData?.map(conn => ({
-    id: conn.id,
-    name: conn.name,
-    type: conn.type as 'wallet' | 'exchange',
-    chainId: conn.chainId ?? undefined,
-    hasApiKey: !!conn.apiKey
-  })) || [];
+  const rawConnections = connectionsData || [];
+  
+  const groupedConnections = groupConnectionsByAddress(
+    rawConnections.map(conn => ({
+      id: conn.id,
+      name: conn.name,
+      type: conn.type,
+      address: conn.address,
+      chainId: conn.chainId,
+      status: 'synced',
+      lastSync: null
+    })),
+    []
+  );
+
+  const connections: ApiConnection[] = groupedConnections.map(group => ({
+    id: group.groupId,
+    name: group.name,
+    type: group.type,
+    chainId: undefined,
+    hasApiKey: group.type === 'exchange' && rawConnections.some(c => c.id === group.connectionIds[0] && !!c.apiKey),
+    address: group.address,
+    connectionIds: group.connectionIds,
+    chainBadges: group.chainBadges
+  }));
 
   const handleAddConnection = async (type: 'wallet' | 'exchange', data: { name?: string; address?: string; chainId?: number; apiKey?: string; apiSecret?: string }) => {
     try {
@@ -131,27 +150,34 @@ export default function Settings() {
     }
   };
 
-  const handleRemoveConnection = async (id: string) => {
+  const handleRemoveConnection = async (groupId: string) => {
     try {
-      const response = await fetch(`/api/connections/${id}`, {
-        method: 'DELETE',
-      });
+      const group = connections.find(c => c.id === groupId);
+      const connectionIdsToDelete = group?.connectionIds || [groupId];
 
-      if (!response.ok) {
-        throw new Error('Failed to delete');
+      for (const id of connectionIdsToDelete) {
+        const response = await fetch(`/api/connections/${id}`, {
+          method: 'DELETE',
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to delete');
+        }
       }
 
       await queryClient.invalidateQueries({ queryKey: ['/api/connections'] });
       await queryClient.invalidateQueries({ queryKey: ['/api/portfolio/summary'] });
 
       toast({
-        title: "Success",
-        description: "Connection removed successfully",
+        title: "تم بنجاح",
+        description: connectionIdsToDelete.length > 1 
+          ? `تم حذف ${connectionIdsToDelete.length} اتصال من الشبكات المختلفة`
+          : "تم حذف الاتصال بنجاح",
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to remove connection",
+        title: "خطأ",
+        description: "فشل حذف الاتصال",
         variant: "destructive",
       });
     }

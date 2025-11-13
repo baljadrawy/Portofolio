@@ -21,6 +21,9 @@ export interface ApiConnection {
   type: 'wallet' | 'exchange';
   chainId?: number;
   hasApiKey: boolean;
+  address?: string;
+  connectionIds?: string[];
+  chainBadges?: Array<{ chainId: number; badge: string; name: string }>;
 }
 
 interface SettingsPageProps {
@@ -89,31 +92,47 @@ export function SettingsPage({ connections, onAddConnection, onRemoveConnection,
                   className="flex items-center justify-between p-3 border border-border rounded-md"
                   data-testid={`wallet-${connection.id}`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div className="h-10 w-10 rounded-full bg-success/10 flex items-center justify-center">
                       <span className="text-success font-semibold">W</span>
                     </div>
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <div className="font-semibold">{connection.name}</div>
-                      <div className="text-sm text-muted-foreground flex items-center gap-2">
+                      {connection.address && (
+                        <div className="text-xs text-muted-foreground font-mono truncate">
+                          {connection.address}
+                        </div>
+                      )}
+                      <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
                         Wallet
-                        {connection.chainId && (
-                          <Badge variant="secondary" className="text-xs">
-                            {CHAIN_NAMES[connection.chainId] || `Chain ${connection.chainId}`}
-                          </Badge>
-                        )}
                       </div>
+                      {connection.chainBadges && connection.chainBadges.length > 0 && (
+                        <div className="flex items-center gap-1 mt-2 flex-wrap">
+                          {connection.chainBadges.map((chain) => (
+                            <Badge 
+                              key={chain.chainId} 
+                              variant="secondary" 
+                              className="text-xs"
+                              title={chain.name}
+                            >
+                              {chain.badge}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onSyncWallet?.(connection.id)}
-                      data-testid={`button-sync-${connection.id}`}
-                    >
-                      <RefreshCw className="h-4 w-4 text-primary" />
-                    </Button>
+                    {connection.connectionIds && connection.connectionIds.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onSyncWallet?.(connection.connectionIds![0])}
+                        data-testid={`button-sync-${connection.id}`}
+                      >
+                        <RefreshCw className="h-4 w-4 text-primary" />
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"

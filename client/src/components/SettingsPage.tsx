@@ -34,6 +34,7 @@ interface SettingsPageProps {
 }
 
 export function SettingsPage({ connections, onAddConnection, onRemoveConnection, onSyncWallet }: SettingsPageProps) {
+  const [newWalletName, setNewWalletName] = useState('');
   const [newWalletAddress, setNewWalletAddress] = useState('');
   const [newExchangeName, setNewExchangeName] = useState('');
   const [newExchangeApi, setNewExchangeApi] = useState('');
@@ -50,29 +51,42 @@ export function SettingsPage({ connections, onAddConnection, onRemoveConnection,
         <h3 className="text-lg font-semibold mb-4">Connected Wallets</h3>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="wallet-address">Wallet Address</Label>
+            <Label htmlFor="wallet-name">اسم المحفظة</Label>
+            <Input
+              id="wallet-name"
+              placeholder="مثال: محفظتي الرئيسية"
+              value={newWalletName}
+              onChange={(e) => setNewWalletName(e.target.value)}
+              data-testid="input-wallet-name"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="wallet-address">عنوان المحفظة</Label>
             <Input
               id="wallet-address"
-              placeholder="Enter your wallet address (0x...)"
+              placeholder="أدخل عنوان المحفظة (0x...)"
               value={newWalletAddress}
               onChange={(e) => setNewWalletAddress(e.target.value)}
               data-testid="input-wallet-address"
             />
             <p className="text-xs text-muted-foreground">
-              سيتم فحص العنوان على جميع الشبكات المدعومة تلقائياً (Ethereum, BNB Chain, Polygon, Base)
+              سيتم فحص العنوان على جميع الشبكات المدعومة تلقائياً
             </p>
           </div>
           <Button
             onClick={() => {
               const trimmedAddress = newWalletAddress.trim();
+              const trimmedName = newWalletName.trim();
               
               if (!trimmedAddress) {
                 return;
               }
               
               onAddConnection?.('wallet', {
+                name: trimmedName || undefined,
                 address: trimmedAddress
               });
+              setNewWalletName('');
               setNewWalletAddress('');
             }}
             disabled={!newWalletAddress.trim()}
@@ -80,7 +94,7 @@ export function SettingsPage({ connections, onAddConnection, onRemoveConnection,
             className="w-full"
           >
             <Plus className="h-4 w-4 mr-2" />
-            Add Wallet & Scan All Networks
+            إضافة محفظة وفحص جميع الشبكات
           </Button>
 
           <div className="space-y-2">

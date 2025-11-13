@@ -43,7 +43,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
   // Helper function to process chains sequentially with rate limiting
-  async function scanChainsBatched(address: string, chainIds: number[]) {
+  async function scanChainsBatched(address: string, chainIds: number[], customName?: string) {
     const DELAY_BETWEEN_NETWORKS = 700; // 700ms delay between networks (3 calls per network = ~4.3 req/sec)
     const results = [];
     
@@ -73,8 +73,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log(`[Scan] Connection already exists for ${chainName}, skipping`);
             results.push({ status: 'fulfilled', value: { chainId, chainName, connection: existing, created: false, status: 'exists' } });
           } else {
+            const walletName = customName ? `${customName} - ${chainName}` : `Wallet - ${chainName}`;
             const connection = await storage.createConnection({
-              name: `Wallet - ${chainName}`,
+              name: walletName,
               type: 'wallet',
               address: address,
               chainId: chainId,
@@ -107,7 +108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/wallet/scan-all-networks", async (req, res) => {
     try {
-      const { address } = req.body;
+      const { address, name } = req.body;
       
       if (!address || typeof address !== 'string') {
         return res.status(400).json({ error: "Invalid wallet address" });
@@ -122,7 +123,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[Scan] Will scan ${chainIds.length} networks sequentially with 700ms delays to respect Etherscan rate limits`);
       
-      const scanResults = await scanChainsBatched(address, chainIds);
+      const scanResults = await scanChainsBatched(address, chainIds, name);
       
       for (const result of scanResults) {
         if (result.status === 'fulfilled' && result.value) {

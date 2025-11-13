@@ -50,9 +50,12 @@ interface WalletData {
   warnings?: string[];
 }
 
+import { SUPPORTED_CHAINS, CHAIN_NAMES, NATIVE_TOKENS } from "@shared/networks";
+
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY;
 const ETHERSCAN_BASE_URL = 'https://api.etherscan.io/v2/api';
-const ETHEREUM_CHAIN_ID = '1';
+
+export { SUPPORTED_CHAINS, CHAIN_NAMES, NATIVE_TOKENS };
 
 export class EtherscanService {
   private apiKey: string;
@@ -64,10 +67,11 @@ export class EtherscanService {
     this.apiKey = ETHERSCAN_API_KEY;
   }
 
-  async getEthBalance(address: string): Promise<string> {
+  async getNativeBalance(address: string, chainId: number = SUPPORTED_CHAINS.ETHEREUM): Promise<string> {
     try {
-      const url = `${ETHERSCAN_BASE_URL}?chainid=${ETHEREUM_CHAIN_ID}&module=account&action=balance&address=${address}&tag=latest&apikey=${this.apiKey}`;
-      console.log(`[Etherscan] Fetching ETH balance for ${address}`);
+      const url = `${ETHERSCAN_BASE_URL}?chainid=${chainId}&module=account&action=balance&address=${address}&tag=latest&apikey=${this.apiKey}`;
+      const chainName = CHAIN_NAMES[chainId] || `Chain ${chainId}`;
+      console.log(`[Etherscan] Fetching native balance for ${address} on ${chainName}`);
       const response = await fetch(url);
       
       if (!response.ok) {
@@ -82,22 +86,24 @@ export class EtherscanService {
       }
 
       if (data.status === '1') {
-        const balanceInEth = (parseFloat(data.result) / 1e18).toString();
-        console.log(`[Etherscan] ETH Balance: ${balanceInEth}`);
-        return balanceInEth;
+        const balanceInNative = (parseFloat(data.result) / 1e18).toString();
+        const nativeSymbol = NATIVE_TOKENS[chainId]?.symbol || 'NATIVE';
+        console.log(`[Etherscan] ${nativeSymbol} Balance: ${balanceInNative}`);
+        return balanceInNative;
       }
       return '0';
     } catch (error) {
-      console.error('Error fetching ETH balance:', error);
+      console.error('Error fetching native balance:', error);
       throw error;
     }
   }
 
-  async getTokenBalances(address: string): Promise<TokenInfo[]> {
+  async getTokenBalances(address: string, chainId: number = SUPPORTED_CHAINS.ETHEREUM): Promise<TokenInfo[]> {
     try {
+      const chainName = CHAIN_NAMES[chainId] || `Chain ${chainId}`;
       // First try the addresstokenbalance endpoint (v2, may require PRO subscription)
-      const url = `${ETHERSCAN_BASE_URL}?chainid=${ETHEREUM_CHAIN_ID}&module=account&action=addresstokenbalance&address=${address}&page=1&offset=1000&apikey=${this.apiKey}`;
-      console.log(`[Etherscan] Fetching token balances for ${address}`);
+      const url = `${ETHERSCAN_BASE_URL}?chainid=${chainId}&module=account&action=addresstokenbalance&address=${address}&page=1&offset=1000&apikey=${this.apiKey}`;
+      console.log(`[Etherscan] Fetching token balances for ${address} on ${chainName}`);
       const response = await fetch(url);
       const data: EtherscanTokenListResponse = await response.json();
       console.log(`[Etherscan] Token balance response status: ${data.status}, message: ${data.message}, result count: ${Array.isArray(data.result) ? data.result.length : 0}`);
@@ -142,18 +148,19 @@ export class EtherscanService {
 
       // Fallback: If addresstokenbalance fails, use tokentx (token transactions) method
       console.log(`[Etherscan] addresstokenbalance failed, falling back to tokentx method`);
-      return await this.getTokenBalancesFromTransactions(address);
+      return await this.getTokenBalancesFromTransactions(address, chainId);
     } catch (error) {
       console.error('Error fetching token balances:', error);
       return [];
     }
   }
 
-  private async getTokenBalancesFromTransactions(address: string): Promise<TokenInfo[]> {
+  private async getTokenBalancesFromTransactions(address: string, chainId: number): Promise<TokenInfo[]> {
     try {
+      const chainName = CHAIN_NAMES[chainId] || `Chain ${chainId}`;
       // Fetch ALL token transactions (using high offset to get maximum results)
-      const url = `${ETHERSCAN_BASE_URL}?chainid=${ETHEREUM_CHAIN_ID}&module=account&action=tokentx&address=${address}&startblock=0&endblock=999999999&page=1&offset=10000&sort=desc&apikey=${this.apiKey}`;
-      console.log(`[Etherscan] Fetching token transactions for ${address} (fallback method)`);
+      const url = `${ETHERSCAN_BASE_URL}?chainid=${chainId}&module=account&action=tokentx&address=${address}&startblock=0&endblock=999999999&page=1&offset=10000&sort=desc&apikey=${this.apiKey}`;
+      console.log(`[Etherscan] Fetching token transactions for ${address} on ${chainName} (fallback method)`);
       const response = await fetch(url);
       const data: EtherscanTxListResponse = await response.json();
       console.log(`[Etherscan] Token TX response status: ${data.status}, result count: ${Array.isArray(data.result) ? data.result.length : 0}`);
@@ -231,10 +238,11 @@ export class EtherscanService {
     }
   }
 
-  async getTransactions(address: string, limit: number = 100): Promise<EtherscanTransaction[]> {
+  async getTransactions(address: string, chainId: number = SUPPORTED_CHAINS.ETHEREUM, limit: number = 100): Promise<EtherscanTransaction[]> {
     try {
-      const url = `${ETHERSCAN_BASE_URL}?chainid=${ETHEREUM_CHAIN_ID}&module=account&action=txlist&address=${address}&startblock=0&endblock=999999999&page=1&offset=${limit}&sort=desc&apikey=${this.apiKey}`;
-      console.log(`[Etherscan] Fetching transactions for ${address}`);
+      const chainName = CHAIN_NAMES[chainId] || `Chain ${chainId}`;
+      const url = `${ETHERSCAN_BASE_URL}?chainid=${chainId}&module=account&action=txlist&address=${address}&startblock=0&endblock=999999999&page=1&offset=${limit}&sort=desc&apikey=${this.apiKey}`;
+      console.log(`[Etherscan] Fetching transactions for ${address} on ${chainName}`);
       const response = await fetch(url);
       const data: EtherscanTxListResponse = await response.json();
       console.log(`[Etherscan] Transactions response status: ${data.status}, result count: ${Array.isArray(data.result) ? data.result.length : 0}`);
@@ -249,19 +257,20 @@ export class EtherscanService {
     }
   }
 
-  async getWalletData(address: string): Promise<WalletData> {
+  async getWalletData(address: string, chainId: number = SUPPORTED_CHAINS.ETHEREUM): Promise<WalletData> {
     const warnings: string[] = [];
+    const nativeToken = NATIVE_TOKENS[chainId] || { symbol: 'NATIVE', name: 'Native Token' };
     
     const results = await Promise.allSettled([
-      this.getEthBalance(address),
-      this.getTokenBalances(address),
-      this.getTransactions(address, 50)
+      this.getNativeBalance(address, chainId),
+      this.getTokenBalances(address, chainId),
+      this.getTransactions(address, chainId, 50)
     ]);
 
     const ethBalance = results[0].status === 'fulfilled' 
       ? results[0].value 
       : (() => {
-          warnings.push(`Failed to fetch ETH balance: ${results[0].reason?.message || 'Unknown error'}`);
+          warnings.push(`Failed to fetch ${nativeToken.symbol} balance: ${results[0].reason?.message || 'Unknown error'}`);
           return '0';
         })();
 

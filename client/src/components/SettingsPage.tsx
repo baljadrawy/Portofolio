@@ -5,17 +5,27 @@ import { Label } from "@/components/ui/label";
 import { Plus, Trash2, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+import { CHAIN_OPTIONS, SUPPORTED_CHAINS, CHAIN_NAMES } from "@shared/networks";
 
 export interface ApiConnection {
   id: string;
   name: string;
   type: 'wallet' | 'exchange';
+  chainId?: number;
   hasApiKey: boolean;
 }
 
 interface SettingsPageProps {
   connections: ApiConnection[];
-  onAddConnection?: (type: 'wallet' | 'exchange', data: { name?: string; address?: string; apiKey?: string; apiSecret?: string }) => void;
+  onAddConnection?: (type: 'wallet' | 'exchange', data: { name?: string; address?: string; chainId?: number; apiKey?: string; apiSecret?: string }) => void;
   onRemoveConnection?: (id: string) => void;
   onSyncWallet?: (connectionId: string) => void;
 }
@@ -23,6 +33,7 @@ interface SettingsPageProps {
 export function SettingsPage({ connections, onAddConnection, onRemoveConnection, onSyncWallet }: SettingsPageProps) {
   const [newWalletName, setNewWalletName] = useState('');
   const [newWalletAddress, setNewWalletAddress] = useState('');
+  const [newWalletChain, setNewWalletChain] = useState(SUPPORTED_CHAINS.ETHEREUM.toString());
   const [newExchangeName, setNewExchangeName] = useState('');
   const [newExchangeApi, setNewExchangeApi] = useState('');
   const [newExchangeSecret, setNewExchangeSecret] = useState('');
@@ -48,10 +59,25 @@ export function SettingsPage({ connections, onAddConnection, onRemoveConnection,
             />
           </div>
           <div className="space-y-2">
+            <Label htmlFor="wallet-network">Network</Label>
+            <Select value={newWalletChain} onValueChange={setNewWalletChain}>
+              <SelectTrigger id="wallet-network" data-testid="select-network">
+                <SelectValue placeholder="Select network" />
+              </SelectTrigger>
+              <SelectContent>
+                {CHAIN_OPTIONS.map((chain) => (
+                  <SelectItem key={chain.value} value={chain.value}>
+                    {chain.label} ({chain.symbol})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="wallet-address">Wallet Address</Label>
             <Input
               id="wallet-address"
-              placeholder="Enter MetaMask, Solflare, or other wallet address"
+              placeholder="Enter your wallet address (0x...)"
               value={newWalletAddress}
               onChange={(e) => setNewWalletAddress(e.target.value)}
               data-testid="input-wallet-address"
@@ -61,6 +87,7 @@ export function SettingsPage({ connections, onAddConnection, onRemoveConnection,
             onClick={() => {
               const trimmedName = newWalletName.trim();
               const trimmedAddress = newWalletAddress.trim();
+              const chainId = parseInt(newWalletChain);
               
               if (!trimmedName || !trimmedAddress) {
                 return;
@@ -68,10 +95,12 @@ export function SettingsPage({ connections, onAddConnection, onRemoveConnection,
               
               onAddConnection?.('wallet', {
                 name: trimmedName,
-                address: trimmedAddress
+                address: trimmedAddress,
+                chainId: chainId
               });
               setNewWalletName('');
               setNewWalletAddress('');
+              setNewWalletChain(SUPPORTED_CHAINS.ETHEREUM.toString());
             }}
             disabled={!newWalletName.trim() || !newWalletAddress.trim()}
             data-testid="button-add-wallet"
@@ -96,7 +125,14 @@ export function SettingsPage({ connections, onAddConnection, onRemoveConnection,
                     </div>
                     <div>
                       <div className="font-semibold">{connection.name}</div>
-                      <div className="text-sm text-muted-foreground">Wallet</div>
+                      <div className="text-sm text-muted-foreground flex items-center gap-2">
+                        Wallet
+                        {connection.chainId && (
+                          <Badge variant="secondary" className="text-xs">
+                            {CHAIN_NAMES[connection.chainId] || `Chain ${connection.chainId}`}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

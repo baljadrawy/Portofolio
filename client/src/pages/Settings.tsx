@@ -4,11 +4,12 @@ import { SettingsPage, type ApiConnection } from "@/components/SettingsPage";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { InsertConnection } from "@shared/schema";
+import { CHAIN_NAMES } from "@shared/networks";
 
 export default function Settings() {
   const { toast } = useToast();
   
-  const { data: connectionsData } = useQuery<Array<{ id: string; name: string; type: string; apiKey: string | null }>>({
+  const { data: connectionsData } = useQuery<Array<{ id: string; name: string; type: string; chainId?: number | null; apiKey: string | null }>>({
     queryKey: ['/api/connections'],
   });
 
@@ -16,10 +17,11 @@ export default function Settings() {
     id: conn.id,
     name: conn.name,
     type: conn.type as 'wallet' | 'exchange',
+    chainId: conn.chainId ?? undefined,
     hasApiKey: !!conn.apiKey
   })) || [];
 
-  const handleAddConnection = async (type: 'wallet' | 'exchange', data: { name?: string; address?: string; apiKey?: string; apiSecret?: string }) => {
+  const handleAddConnection = async (type: 'wallet' | 'exchange', data: { name?: string; address?: string; chainId?: number; apiKey?: string; apiSecret?: string }) => {
     try {
       const name = data.name?.trim() || (type === 'wallet' ? 'New Wallet' : 'New Exchange');
       
@@ -29,8 +31,13 @@ export default function Settings() {
         status: 'synced' as const,
       };
 
-      if (type === 'wallet' && data.address?.trim()) {
-        payload.address = data.address.trim();
+      if (type === 'wallet') {
+        if (data.address?.trim()) {
+          payload.address = data.address.trim();
+        }
+        if (data.chainId) {
+          payload.chainId = data.chainId;
+        }
       }
 
       if (type === 'exchange') {
@@ -88,9 +95,14 @@ export default function Settings() {
 
   const handleSyncWallet = async (connectionId: string) => {
     try {
+      const connection = connections.find(c => c.id === connectionId);
+      const networkName = connection?.chainId && CHAIN_NAMES[connection.chainId] 
+        ? CHAIN_NAMES[connection.chainId] 
+        : 'الإيثريوم';
+      
       toast({
         title: "جاري المزامنة",
-        description: "جاري جلب البيانات من شبكة الإيثريوم...",
+        description: `جاري جلب البيانات من شبكة ${networkName}...`,
       });
 
       const response = await fetch(`/api/wallet/sync/${connectionId}`, {
@@ -115,7 +127,7 @@ export default function Settings() {
     } catch (error) {
       toast({
         title: "خطأ في المزامنة",
-        description: "فشل جلب البيانات من شبكة الإيثريوم. تأكد من صحة عنوان المحفظة ومفتاح API.",
+        description: "فشل جلب البيانات من الشبكة. تأكد من صحة عنوان المحفظة ومفتاح API.",
         variant: "destructive",
       });
     }

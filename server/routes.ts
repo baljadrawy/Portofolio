@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertConnectionSchema, insertHoldingSchema, insertTransactionSchema } from "@shared/schema";
-import { etherscanService } from "./services/etherscan";
+import { etherscanService, SUPPORTED_CHAINS, NATIVE_TOKENS } from "./services/etherscan";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Connection routes
@@ -91,13 +91,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid wallet connection" });
       }
 
-      console.log(`[Wallet Sync] Starting sync for wallet: ${connection.name} (${connection.address})`);
+      const chainId = connection.chainId || SUPPORTED_CHAINS.ETHEREUM;
+      const nativeToken = NATIVE_TOKENS[chainId] || { symbol: 'ETH', name: 'Ethereum' };
+      
+      console.log(`[Wallet Sync] Starting sync for wallet: ${connection.name} (${connection.address}) on chain ${chainId}`);
 
       await storage.updateConnection(connection.id, { status: 'syncing' });
 
-      const walletData = await etherscanService.getWalletData(connection.address);
+      const walletData = await etherscanService.getWalletData(connection.address, chainId);
 
-      console.log(`[Wallet Sync] Received data - ETH: ${walletData.ethBalance}, Tokens: ${walletData.tokens.length}, Transactions: ${walletData.transactions.length}`);
+      console.log(`[Wallet Sync] Received data - ${nativeToken.symbol}: ${walletData.ethBalance}, Tokens: ${walletData.tokens.length}, Transactions: ${walletData.transactions.length}`);
       
       if (walletData.warnings && walletData.warnings.length > 0) {
         console.warn('[Wallet Sync] Warnings:', walletData.warnings);
@@ -108,12 +111,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (parseFloat(walletData.ethBalance) > 0) {
         await storage.createHolding({
           connectionId: connection.id,
-          symbol: 'ETH',
-          name: 'Ethereum',
+          symbol: nativeToken.symbol,
+          name: nativeToken.name,
           amount: walletData.ethBalance,
           avgCost: '0'
         });
-        console.log(`[Wallet Sync] Added ETH holding: ${walletData.ethBalance}`);
+        console.log(`[Wallet Sync] Added ${nativeToken.symbol} holding: ${walletData.ethBalance}`);
       }
 
       for (const token of walletData.tokens) {
@@ -131,14 +134,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       for (const tx of walletData.transactions.slice(0, 50)) {
         const isIncoming = tx.to.toLowerCase() === connection.address.toLowerCase();
-        const ethValue = (parseFloat(tx.value) / 1e18).toString();
+        const nativeValue = (parseFloat(tx.value) / 1e18).toString();
         
-        if (parseFloat(ethValue) > 0) {
+        if (parseFloat(nativeValue) > 0) {
           await storage.createTransaction({
             connectionId: connection.id,
             type: isIncoming ? 'buy' : 'sell',
-            symbol: 'ETH',
-            amount: ethValue,
+            symbol: nativeToken.symbol,
+            amount: nativeValue,
             price: '0',
             total: '0',
             timestamp: new Date(parseInt(tx.timeStamp) * 1000),

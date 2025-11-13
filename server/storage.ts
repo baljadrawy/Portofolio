@@ -85,6 +85,7 @@ export class MemStorage implements IStorage {
       name: insertConnection.name,
       type: insertConnection.type,
       address: insertConnection.address ?? null,
+      chainId: insertConnection.chainId ?? null,
       apiKey: insertConnection.apiKey ?? null,
       apiSecret: insertConnection.apiSecret ?? null,
       status: insertConnection.status || 'synced',

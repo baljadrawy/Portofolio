@@ -1,4 +1,5 @@
 import { storage } from "./storage";
+import { SUPPORTED_CHAINS } from "@shared/networks";
 
 export async function initializeSampleData() {
   // Check if data already exists
@@ -9,24 +10,42 @@ export async function initializeSampleData() {
 
   // Create sample connections
   const metamask = await storage.createConnection({
-    name: "MetaMask Wallet",
+    name: "MetaMask (Ethereum)",
     type: "wallet",
     address: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
+    chainId: SUPPORTED_CHAINS.ETHEREUM,
+    status: "synced",
+  });
+
+  const bscWallet = await storage.createConnection({
+    name: "BNB Chain Wallet",
+    type: "wallet",
+    address: "0x8894E0a0c962CB723c1976a4421c95949bE2D4E3",
+    chainId: SUPPORTED_CHAINS.BSC,
+    status: "synced",
+  });
+
+  const polygonWallet = await storage.createConnection({
+    name: "Polygon Wallet",
+    type: "wallet",
+    address: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+    chainId: SUPPORTED_CHAINS.POLYGON,
+    status: "synced",
+  });
+
+  const baseWallet = await storage.createConnection({
+    name: "Base Wallet",
+    type: "wallet",
+    address: "0x50Ef0e0C3e21bFE18f2Cc59b32Dd9D2E3F6d9E99",
+    chainId: SUPPORTED_CHAINS.BASE,
     status: "synced",
   });
 
   const binance = await storage.createConnection({
-    name: "Binance",
+    name: "Binance Exchange",
     type: "exchange",
     apiKey: "sample_api_key",
     apiSecret: "sample_api_secret",
-    status: "synced",
-  });
-
-  const solflare = await storage.createConnection({
-    name: "Solflare Wallet",
-    type: "wallet",
-    address: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
     status: "synced",
   });
 
@@ -48,11 +67,11 @@ export async function initializeSampleData() {
   });
 
   await storage.createHolding({
-    connectionId: solflare.id,
-    symbol: "SOL",
-    name: "Solana",
+    connectionId: bscWallet.id,
+    symbol: "BNB",
+    name: "BNB",
     amount: "150",
-    avgCost: "95",
+    avgCost: "295",
   });
 
   await storage.createHolding({
@@ -224,7 +243,7 @@ export async function initializeSampleData() {
   });
 
   await storage.createHolding({
-    connectionId: solflare.id,
+    connectionId: polygonWallet.id,
     symbol: "APT",
     name: "Aptos",
     amount: "500",

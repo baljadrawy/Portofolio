@@ -12,12 +12,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/connections", async (_req, res) => {
     try {
       const connections = await storage.getAllConnections();
-      const safeConnections = connections.map(conn => ({
-        ...conn,
-        apiKey: conn.apiKey ? '***' : null,
-        apiSecret: conn.apiSecret ? '***' : null,
-      }));
-      res.json(safeConnections);
+      res.json(connections);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch connections" });
     }
@@ -26,6 +21,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/connections", async (req, res) => {
     try {
       const validatedData = insertConnectionSchema.parse(req.body);
+      
+      // Security: Reject any attempt to store API keys
+      if ('apiKey' in req.body || 'apiSecret' in req.body) {
+        return res.status(400).json({ 
+          error: "API keys cannot be stored. Provide credentials during sync operations only." 
+        });
+      }
+      
       const connection = await storage.createConnection(validatedData);
       res.status(201).json(connection);
     } catch (error) {
@@ -466,15 +469,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid exchange connection" });
       }
 
-      if (!connection.apiKey || !connection.apiSecret) {
-        return res.status(400).json({ error: "API keys not configured for this exchange" });
+      // Security: Credentials must be provided in request body, not stored
+      const { apiKey, apiSecret } = req.body;
+      
+      if (!apiKey || !apiSecret) {
+        return res.status(400).json({ 
+          error: "API credentials required. Please provide apiKey and apiSecret in request body." 
+        });
       }
 
       await storage.updateConnection(connection.id, { status: 'syncing' });
 
       console.log(`[Exchange Sync] Starting sync for exchange: ${connection.name}`);
 
-      const accountData = await binanceService.getAccountData(connection.apiKey, connection.apiSecret);
+      const accountData = await binanceService.getAccountData(apiKey, apiSecret);
       
       console.log(`[Exchange Sync] Received data - Balances: ${accountData.balances.length}`);
       

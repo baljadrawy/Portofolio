@@ -41,13 +41,12 @@ export default function Settings() {
     name: group.name,
     type: group.type,
     chainId: undefined,
-    hasApiKey: group.type === 'exchange' && rawConnections.some(c => c.id === group.connectionIds[0] && !!c.apiKey),
     address: group.address,
     connectionIds: group.connectionIds,
     chainBadges: group.chainBadges
   }));
 
-  const handleAddConnection = async (type: 'wallet' | 'exchange', data: { name?: string; address?: string; chainId?: number; apiKey?: string; apiSecret?: string }) => {
+  const handleAddConnection = async (type: 'wallet' | 'exchange', data: { name?: string; address?: string; chainId?: number }) => {
     try {
       if (type === 'wallet') {
         const address = data.address?.trim();
@@ -130,51 +129,16 @@ export default function Settings() {
           type: 'exchange',
           status: 'pending' as const,
         };
-
-        if (data.apiKey?.trim()) {
-          payload.apiKey = data.apiKey.trim();
-        }
-        if (data.apiSecret?.trim()) {
-          payload.apiSecret = data.apiSecret.trim();
-        }
         
         const result: any = await apiRequest('POST', '/api/connections', payload);
 
-        if (data.apiKey && data.apiSecret) {
-          toast({
-            title: "جاري المزامنة...",
-            description: "جاري جلب البيانات من المنصة...",
-          });
+        await queryClient.invalidateQueries({ queryKey: ['/api/connections'] });
+        await queryClient.invalidateQueries({ queryKey: ['/api/portfolio/summary'] });
 
-          try {
-            await fetch(`/api/exchange/sync/${result.id}`, {
-              method: 'POST',
-            });
-
-            await queryClient.invalidateQueries({ queryKey: ['/api/connections'] });
-            await queryClient.invalidateQueries({ queryKey: ['/api/portfolio/summary'] });
-            await queryClient.invalidateQueries({ queryKey: ['/api/holdings'] });
-
-            toast({
-              title: "تم بنجاح",
-              description: "تم إضافة المنصة ومزامنة البيانات بنجاح",
-            });
-          } catch (syncError) {
-            toast({
-              title: "تحذير",
-              description: "تم إضافة المنصة لكن فشلت المزامنة. تحقق من مفاتيح API.",
-              variant: "destructive",
-            });
-          }
-        } else {
-          await queryClient.invalidateQueries({ queryKey: ['/api/connections'] });
-          await queryClient.invalidateQueries({ queryKey: ['/api/portfolio/summary'] });
-
-          toast({
-            title: "تم بنجاح",
-            description: "تم إضافة المنصة بنجاح",
-          });
-        }
+        toast({
+          title: "تم بنجاح",
+          description: "تم إضافة المنصة بنجاح. استخدم زر المزامنة لجلب البيانات.",
+        });
       }
     } catch (error) {
       toast({
@@ -323,21 +287,35 @@ export default function Settings() {
     }
   };
 
-  const handleSyncExchange = async (connectionId: string) => {
+  const handleSyncExchange = async (connectionId: string, credentials: { apiKey: string; apiSecret: string }) => {
     try {
-      const connection = connections.find(c => c.id === connectionId);
+      const group = connections.find(c => c.id === connectionId);
+      
+      // Security fix: Exchange connections should not be grouped, use the actual connection ID
+      // If it's a grouped connection (has connectionIds), use the first one, otherwise use the id itself
+      const actualConnectionId = group?.connectionIds && group.connectionIds.length > 0 
+        ? group.connectionIds[0] 
+        : connectionId;
       
       toast({
         title: "جاري المزامنة",
-        description: `جاري جلب البيانات من ${connection?.name || 'المنصة'}...`,
+        description: `جاري جلب البيانات من ${group?.name || 'المنصة'}...`,
       });
 
-      const response = await fetch(`/api/exchange/sync/${connectionId}`, {
+      const response = await fetch(`/api/exchange/sync/${actualConnectionId}`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          apiKey: credentials.apiKey,
+          apiSecret: credentials.apiSecret,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to sync');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to sync');
       }
 
       const result = await response.json();
@@ -348,15 +326,13 @@ export default function Settings() {
 
       toast({
         title: "تمت المزامنة بنجاح",
-        description: `تم جلب ${result.balancesCount} عملة من ${connection?.name || 'المنصة'}`,
+        description: `تم جلب ${result.balancesCount} عملة من ${group?.name || 'المنصة'}`,
       });
     } catch (error: any) {
       const errorMessage = error?.message || "فشل جلب البيانات";
       toast({
         title: "خطأ في المزامنة",
-        description: errorMessage.includes('مفتاح API') 
-          ? errorMessage 
-          : "فشل جلب البيانات من المنصة. تحقق من مفاتيح API.",
+        description: errorMessage,
         variant: "destructive",
       });
     }

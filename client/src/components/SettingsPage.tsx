@@ -6,6 +6,14 @@ import { Plus, Trash2, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -20,7 +28,6 @@ export interface ApiConnection {
   name: string;
   type: 'wallet' | 'exchange';
   chainId?: number;
-  hasApiKey: boolean;
   address?: string;
   connectionIds?: string[];
   chainBadges?: Array<{ chainId?: number; networkKey?: string; badge: string; name: string }>;
@@ -28,11 +35,11 @@ export interface ApiConnection {
 
 interface SettingsPageProps {
   connections: ApiConnection[];
-  onAddConnection?: (type: 'wallet' | 'exchange', data: { name?: string; address?: string; chainId?: number; apiKey?: string; apiSecret?: string }) => void;
+  onAddConnection?: (type: 'wallet' | 'exchange', data: { name?: string; address?: string; chainId?: number }) => void;
   onAddSolanaWallet?: (data: { name?: string; address: string }) => void;
   onRemoveConnection?: (id: string) => void;
   onSyncWallet?: (connectionId: string) => void;
-  onSyncExchange?: (connectionId: string) => void;
+  onSyncExchange?: (connectionId: string, credentials: { apiKey: string; apiSecret: string }) => void;
 }
 
 export function SettingsPage({ connections, onAddConnection, onAddSolanaWallet, onRemoveConnection, onSyncWallet, onSyncExchange }: SettingsPageProps) {
@@ -41,8 +48,33 @@ export function SettingsPage({ connections, onAddConnection, onAddSolanaWallet, 
   const [newSolanaName, setNewSolanaName] = useState('');
   const [newSolanaAddress, setNewSolanaAddress] = useState('');
   const [newExchangeName, setNewExchangeName] = useState('');
-  const [newExchangeApi, setNewExchangeApi] = useState('');
-  const [newExchangeSecret, setNewExchangeSecret] = useState('');
+  
+  const [syncDialogOpen, setSyncDialogOpen] = useState(false);
+  const [syncConnectionId, setSyncConnectionId] = useState<string | null>(null);
+  const [syncConnectionName, setSyncConnectionName] = useState<string>('');
+  const [syncApiKey, setSyncApiKey] = useState('');
+  const [syncApiSecret, setSyncApiSecret] = useState('');
+
+  const handleOpenSyncDialog = (connectionId: string, connectionName: string) => {
+    setSyncConnectionId(connectionId);
+    setSyncConnectionName(connectionName);
+    setSyncApiKey('');
+    setSyncApiSecret('');
+    setSyncDialogOpen(true);
+  };
+
+  const handleSyncSubmit = () => {
+    if (syncConnectionId && syncApiKey.trim() && syncApiSecret.trim()) {
+      onSyncExchange?.(syncConnectionId, {
+        apiKey: syncApiKey.trim(),
+        apiSecret: syncApiSecret.trim(),
+      });
+      setSyncDialogOpen(false);
+      setSyncConnectionId(null);
+      setSyncApiKey('');
+      setSyncApiSecret('');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -225,42 +257,21 @@ export function SettingsPage({ connections, onAddConnection, onAddSolanaWallet, 
         <h3 className="text-lg font-semibold mb-4">Exchange API Connections</h3>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="exchange-name">Exchange Name</Label>
+            <Label htmlFor="exchange-name">اسم المنصة</Label>
             <Input
               id="exchange-name"
-              placeholder="e.g., Binance, Coinbase, Kraken"
+              placeholder="مثال: Binance"
               value={newExchangeName}
               onChange={(e) => setNewExchangeName(e.target.value)}
               data-testid="input-exchange-name"
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="api-key">API Key</Label>
-            <Input
-              id="api-key"
-              type="password"
-              placeholder="Enter your exchange API key"
-              value={newExchangeApi}
-              onChange={(e) => setNewExchangeApi(e.target.value)}
-              data-testid="input-api-key"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="api-secret">API Secret</Label>
-            <Input
-              id="api-secret"
-              type="password"
-              placeholder="Enter your exchange API secret"
-              value={newExchangeSecret}
-              onChange={(e) => setNewExchangeSecret(e.target.value)}
-              data-testid="input-api-secret"
-            />
+            <p className="text-xs text-muted-foreground">
+              ستحتاج لإدخال مفاتيح API عند المزامنة لأول مرة
+            </p>
           </div>
           <Button
             onClick={() => {
               const trimmedName = newExchangeName.trim();
-              const trimmedApiKey = newExchangeApi.trim();
-              const trimmedApiSecret = newExchangeSecret.trim();
               
               if (!trimmedName) {
                 return;
@@ -268,19 +279,15 @@ export function SettingsPage({ connections, onAddConnection, onAddSolanaWallet, 
               
               onAddConnection?.('exchange', {
                 name: trimmedName,
-                apiKey: trimmedApiKey || undefined,
-                apiSecret: trimmedApiSecret || undefined
               });
               setNewExchangeName('');
-              setNewExchangeApi('');
-              setNewExchangeSecret('');
             }}
             disabled={!newExchangeName.trim()}
             data-testid="button-add-exchange"
             className="w-full"
           >
             <Plus className="h-4 w-4 mr-2" />
-            Connect Exchange
+            إضافة منصة
           </Button>
 
           <div className="space-y-2 mt-4">
@@ -300,22 +307,19 @@ export function SettingsPage({ connections, onAddConnection, onAddSolanaWallet, 
                       <div className="font-semibold">{connection.name}</div>
                       <div className="text-sm text-muted-foreground flex items-center gap-2">
                         Exchange
-                        {connection.hasApiKey && <Badge variant="secondary">API Connected</Badge>}
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {connection.hasApiKey && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onSyncExchange?.(connection.id)}
-                        data-testid={`button-sync-${connection.id}`}
-                        title="مزامنة البيانات"
-                      >
-                        <RefreshCw className="h-4 w-4 text-primary" />
-                      </Button>
-                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleOpenSyncDialog(connection.id, connection.name)}
+                      data-testid={`button-sync-${connection.id}`}
+                      title="مزامنة البيانات"
+                    >
+                      <RefreshCw className="h-4 w-4 text-primary" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -333,6 +337,57 @@ export function SettingsPage({ connections, onAddConnection, onAddSolanaWallet, 
           </div>
         </div>
       </Card>
+
+      <Dialog open={syncDialogOpen} onOpenChange={setSyncDialogOpen}>
+        <DialogContent data-testid="dialog-sync-credentials">
+          <DialogHeader>
+            <DialogTitle>مزامنة {syncConnectionName}</DialogTitle>
+            <DialogDescription>
+              أدخل مفاتيح API للمزامنة. لن يتم حفظ المفاتيح - ستحتاج لإدخالها في كل مرة.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="sync-api-key">مفتاح API</Label>
+              <Input
+                id="sync-api-key"
+                type="password"
+                placeholder="أدخل مفتاح API"
+                value={syncApiKey}
+                onChange={(e) => setSyncApiKey(e.target.value)}
+                data-testid="input-sync-api-key"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sync-api-secret">API Secret</Label>
+              <Input
+                id="sync-api-secret"
+                type="password"
+                placeholder="أدخل API Secret"
+                value={syncApiSecret}
+                onChange={(e) => setSyncApiSecret(e.target.value)}
+                data-testid="input-sync-api-secret"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setSyncDialogOpen(false)}
+              data-testid="button-cancel-sync"
+            >
+              إلغاء
+            </Button>
+            <Button
+              onClick={handleSyncSubmit}
+              disabled={!syncApiKey.trim() || !syncApiSecret.trim()}
+              data-testid="button-confirm-sync"
+            >
+              مزامنة
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

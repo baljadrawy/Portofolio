@@ -6,9 +6,15 @@ import {
   type Holding,
   type InsertHolding,
   type Transaction,
-  type InsertTransaction
+  type InsertTransaction,
+  users,
+  connections,
+  holdings,
+  transactions
 } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { db } from "./db";
+import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
   // User methods (legacy)
@@ -88,8 +94,6 @@ export class MemStorage implements IStorage {
       chainId: insertConnection.chainId ?? null,
       chainNamespace: insertConnection.chainNamespace || 'evm',
       networkKey: insertConnection.networkKey ?? null,
-      apiKey: insertConnection.apiKey ?? null,
-      apiSecret: insertConnection.apiSecret ?? null,
       status: insertConnection.status || 'synced',
       lastSync: new Date(),
       createdAt: new Date(),
@@ -194,4 +198,107 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  // User methods
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db.insert(users).values(insertUser).returning();
+    return user;
+  }
+
+  // Connection methods
+  async getAllConnections(): Promise<Connection[]> {
+    return await db.select().from(connections);
+  }
+
+  async getConnection(id: string): Promise<Connection | undefined> {
+    const [connection] = await db.select().from(connections).where(eq(connections.id, id));
+    return connection || undefined;
+  }
+
+  async createConnection(insertConnection: InsertConnection): Promise<Connection> {
+    const [connection] = await db.insert(connections).values(insertConnection).returning();
+    return connection;
+  }
+
+  async updateConnection(id: string, updates: Partial<Connection>): Promise<Connection | undefined> {
+    const [updated] = await db
+      .update(connections)
+      .set(updates)
+      .where(eq(connections.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteConnection(id: string): Promise<boolean> {
+    await this.deleteHoldingsByConnection(id);
+    const result = await db.delete(connections).where(eq(connections.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Holding methods
+  async getAllHoldings(): Promise<Holding[]> {
+    return await db.select().from(holdings);
+  }
+
+  async getHoldingsByConnection(connectionId: string): Promise<Holding[]> {
+    return await db.select().from(holdings).where(eq(holdings.connectionId, connectionId));
+  }
+
+  async getHolding(id: string): Promise<Holding | undefined> {
+    const [holding] = await db.select().from(holdings).where(eq(holdings.id, id));
+    return holding || undefined;
+  }
+
+  async createHolding(insertHolding: InsertHolding): Promise<Holding> {
+    const [holding] = await db.insert(holdings).values(insertHolding).returning();
+    return holding;
+  }
+
+  async updateHolding(id: string, updates: Partial<Holding>): Promise<Holding | undefined> {
+    const [updated] = await db
+      .update(holdings)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(holdings.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteHolding(id: string): Promise<boolean> {
+    const result = await db.delete(holdings).where(eq(holdings.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async deleteHoldingsByConnection(connectionId: string): Promise<void> {
+    await db.delete(holdings).where(eq(holdings.connectionId, connectionId));
+  }
+
+  // Transaction methods
+  async getAllTransactions(): Promise<Transaction[]> {
+    return await db.select().from(transactions).orderBy(desc(transactions.timestamp));
+  }
+
+  async getTransactionsByConnection(connectionId: string): Promise<Transaction[]> {
+    return await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.connectionId, connectionId))
+      .orderBy(desc(transactions.timestamp));
+  }
+
+  async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
+    const [transaction] = await db.insert(transactions).values(insertTransaction).returning();
+    return transaction;
+  }
+}
+
+export const storage = new DatabaseStorage();

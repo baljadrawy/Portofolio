@@ -8,7 +8,21 @@ A comprehensive cryptocurrency portfolio tracking application that aggregates ho
 
 Preferred communication style: Simple, everyday language.
 
-## Recent Changes (November 13, 2025)
+## Recent Changes
+
+### November 16, 2025
+
+**PostgreSQL Database Migration:**
+- Successfully migrated from in-memory storage (MemStorage) to persistent PostgreSQL database
+- Created DatabaseStorage class implementing IStorage interface using Drizzle ORM
+- All data now persists across application restarts
+- Added server/db.ts for database connection management via Neon Pool
+- Executed schema migration with `npm run db:push` successfully
+- All existing features (connections, holdings, transactions) now use database storage
+- Sample data initialization checks for existing data before creating
+- Foreign key constraints ensure cascading deletes (holdings and transactions deleted when connection is removed)
+
+### November 13, 2025
 
 **Binance Exchange Integration:**
 - Implemented full Binance exchange integration for centralized exchange portfolio tracking
@@ -76,8 +90,8 @@ The application uses a monorepo structure with shared TypeScript types between t
 **Backend:**
 - **Framework:** Express.js with TypeScript for a RESTful API.
 - **API Design:** RESTful endpoints with centralized route registration, request/response logging, and error handling.
-- **Data Access:** Abstract `IStorage` interface, currently using in-memory `MemStorage` for development, with a defined PostgreSQL schema for future production via Drizzle ORM.
-- **Data Storage:** Uses Drizzle ORM for type-safe database queries, supporting `connections`, `holdings`, and `transactions` tables.
+- **Data Access:** Abstract `IStorage` interface implemented via `DatabaseStorage` class using Drizzle ORM for PostgreSQL.
+- **Data Storage:** PostgreSQL database via Neon (serverless PostgreSQL hosting) with Drizzle ORM for type-safe queries, supporting `connections`, `holdings`, `transactions`, and `users` tables with proper foreign key constraints.
 
 ### Feature Specifications
 
@@ -91,7 +105,7 @@ The application uses a monorepo structure with shared TypeScript types between t
 ### System Design Choices
 
 - **Monorepo:** Facilitates shared TypeScript types between client and server, preventing API contract mismatches.
-- **Abstract Storage Layer:** Allows flexible swapping between in-memory storage for development and a database (PostgreSQL via Drizzle ORM) for persistence.
+- **Abstract Storage Layer:** Uses IStorage interface with DatabaseStorage implementation for production-ready PostgreSQL persistence via Drizzle ORM.
 - **Client-Side Data Fetching with React Query:** Manages real-time data updates, caching, and aggregation on the client, enabling optimistic UI updates and request deduplication.
 - **`shadcn/ui` Component Library:** Chosen for rapid UI development with full customization flexibility without adding runtime dependencies.
 - **Type Safety:** Achieved through shared schema definitions, Zod validation, and Drizzle type inference to ensure frontend/backend type synchronization.
@@ -99,7 +113,7 @@ The application uses a monorepo structure with shared TypeScript types between t
 ## External Dependencies
 
 ### Third-Party Services
-- **Neon Database:** Serverless PostgreSQL hosting (configured for future use).
+- **Neon Database:** Serverless PostgreSQL hosting for persistent data storage (active in production).
 - **Etherscan API v2:** Used for blockchain data retrieval across supported EVM networks.
 - **Solscan API v2:** Used for Solana blockchain data retrieval including wallet balances and token metadata.
 - **Binance API:** Used for exchange portfolio tracking and balance retrieval via official `binance` npm package.

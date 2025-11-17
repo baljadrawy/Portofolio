@@ -7,7 +7,9 @@ const cmcService = new CoinMarketCapService();
 export function registerPriceRoutes(app: Express) {
   app.post("/api/prices/update", async (_req, res) => {
     try {
+      console.log('[Prices] Starting price update');
       const holdings = await storage.getAllHoldings();
+      console.log(`[Prices] Found ${holdings.length} holdings`);
       
       if (holdings.length === 0) {
         return res.json({ 
@@ -17,10 +19,10 @@ export function registerPriceRoutes(app: Express) {
       }
 
       const symbols = Array.from(new Set(holdings.map(h => h.symbol)));
-      
-      console.log(`[Prices] Fetching prices for ${symbols.length} unique symbols`);
+      console.log(`[Prices] Fetching prices for ${symbols.length} unique symbols:`, symbols);
       
       const priceMap = await cmcService.getPrices(symbols);
+      console.log(`[Prices] Received ${priceMap.size} prices from CoinMarketCap`);
       
       const updates: Array<{ id: string; price: number }> = [];
       
@@ -34,33 +36,52 @@ export function registerPriceRoutes(app: Express) {
         }
       }
 
-      await storage.updateHoldingsPrices(updates);
+      if (updates.length > 0) {
+        await storage.updateHoldingsPrices(updates);
+        console.log(`[Prices] Updated ${updates.length} holdings with current prices`);
+      } else {
+        console.log('[Prices] No price updates available');
+      }
+
+      const updatedHoldings = await storage.getAllHoldings();
       
-      console.log(`[Prices] Updated ${updates.length} holdings with current prices`);
+      let totalValue = 0;
+      let totalChange24h = 0;
 
-      const totalValue = holdings.reduce((sum, holding) => {
+      for (const holding of updatedHoldings) {
         const priceData = priceMap.get(holding.symbol);
-        if (priceData) {
-          const value = parseFloat(holding.amount) * priceData.price;
-          return sum + value;
+        const currentPrice = holding.currentPrice 
+          ? (typeof holding.currentPrice === 'string' ? parseFloat(holding.currentPrice) : holding.currentPrice)
+          : (priceData?.price || 0);
+        
+        if (holding.amount && currentPrice > 0) {
+          const amount = typeof holding.amount === 'string' ? parseFloat(holding.amount) : holding.amount;
+          const value = amount * currentPrice;
+          totalValue += value;
+          
+          if (priceData && priceData.change24h) {
+            const change = (priceData.change24h / 100) * value;
+            totalChange24h += change;
+          }
         }
-        return sum;
-      }, 0);
+      }
 
-      const totalChange24h = holdings.reduce((sum, holding) => {
-        const priceData = priceMap.get(holding.symbol);
-        if (priceData) {
-          const value = parseFloat(holding.amount) * priceData.price;
-          const change = (priceData.change24h / 100) * value;
-          return sum + change;
-        }
-        return sum;
-      }, 0);
-
-      await storage.createPortfolioSnapshot({
-        totalValue: totalValue.toString(),
-        totalChange24h: totalChange24h.toString()
+      const missingPrices = updatedHoldings.filter(h => {
+        const hasPrice = priceMap.has(h.symbol);
+        return !hasPrice && parseFloat(h.amount) > 0;
       });
+
+      if (missingPrices.length > 0) {
+        console.log(`[Prices] Warning: ${missingPrices.length} holdings missing price data:`, 
+          missingPrices.map(h => h.symbol).join(', '));
+      }
+
+      if (totalValue > 0) {
+        await storage.createPortfolioSnapshot({
+          totalValue: totalValue.toString(),
+          totalChange24h: totalChange24h.toString()
+        });
+      }
 
       res.json({
         message: "Prices updated successfully",

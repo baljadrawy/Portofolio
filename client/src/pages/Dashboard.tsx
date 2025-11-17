@@ -1,14 +1,17 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { PortfolioOverview } from "@/components/PortfolioOverview";
 import { AssetAllocationChart } from "@/components/AssetAllocationChart";
 import { HoldingsTable, type Holding } from "@/components/HoldingsTable";
 import { TransactionHistory, type Transaction } from "@/components/TransactionHistory";
 import { ConnectedAccounts, type ConnectedAccount } from "@/components/ConnectedAccounts";
+import { PerformanceChart } from "@/components/PerformanceChart";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { queryClient } from "@/lib/queryClient";
+import { Button } from "@/components/ui/button";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { groupConnectionsByAddress } from "@/lib/groupConnections";
+import { RefreshCw } from "lucide-react";
 
 interface PortfolioSummary {
   totalValue: number;
@@ -23,10 +26,43 @@ interface PortfolioSummary {
   connections: Array<{ id: string; name: string; type: string; status: string; lastSync: string | null; address?: string | null; chainId?: number | null }>;
 }
 
+interface PortfolioSnapshot {
+  id: string;
+  totalValue: string;
+  totalChange24h: string | null;
+  timestamp: string;
+}
+
 export default function Dashboard() {
   const { toast } = useToast();
   const { data: portfolio, isLoading } = useQuery<PortfolioSummary>({
     queryKey: ['/api/portfolio/summary'],
+  });
+
+  const { data: performanceData } = useQuery<PortfolioSnapshot[]>({
+    queryKey: ['/api/portfolio/history'],
+  });
+
+  const updatePricesMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest<any>('/api/prices/update', 'POST');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/portfolio/summary'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/portfolio/history'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/holdings'] });
+      toast({
+        title: "تم بنجاح",
+        description: "تم تحديث الأسعار بنجاح",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "خطأ",
+        description: "فشل تحديث الأسعار",
+        variant: "destructive",
+      });
+    },
   });
 
 
@@ -146,17 +182,38 @@ export default function Dashboard() {
     );
   }
 
+  const performanceChartData = performanceData?.map(snapshot => ({
+    timestamp: snapshot.timestamp,
+    totalValue: parseFloat(snapshot.totalValue),
+    totalChange24h: snapshot.totalChange24h ? parseFloat(snapshot.totalChange24h) : 0,
+  })) || [];
+
   return (
     <div className="space-y-6">
-      <PortfolioOverview
-        totalValue={portfolio.totalValue}
-        change24h={portfolio.change24hValue}
-        change24hPercent={portfolio.change24hPercent}
-        totalProfitLoss={portfolio.totalProfitLoss}
-        totalProfitLossPercent={portfolio.totalProfitLossPercent}
-        assetsCount={portfolio.assetsCount}
-        connectedSources={portfolio.connectedSources}
-      />
+      <div className="flex items-center justify-between">
+        <PortfolioOverview
+          totalValue={portfolio.totalValue}
+          change24h={portfolio.change24hValue}
+          change24hPercent={portfolio.change24hPercent}
+          totalProfitLoss={portfolio.totalProfitLoss}
+          totalProfitLossPercent={portfolio.totalProfitLossPercent}
+          assetsCount={portfolio.assetsCount}
+          connectedSources={portfolio.connectedSources}
+        />
+        <Button 
+          onClick={() => updatePricesMutation.mutate()}
+          disabled={updatePricesMutation.isPending}
+          data-testid="button-update-prices"
+          className="gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${updatePricesMutation.isPending ? 'animate-spin' : ''}`} />
+          تحديث الأسعار
+        </Button>
+      </div>
+
+      {performanceChartData.length > 0 && (
+        <PerformanceChart data={performanceChartData} />
+      )}
 
       <Tabs defaultValue="holdings" className="w-full">
         <TabsList className="grid w-full grid-cols-2">

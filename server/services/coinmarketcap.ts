@@ -24,15 +24,18 @@ interface PriceData {
 }
 
 export class CoinMarketCapService {
-  private apiKey: string;
+  private apiKey: string | undefined;
   private baseUrl = 'https://pro-api.coinmarketcap.com/v1';
 
   constructor() {
-    const key = process.env.COINMARKETCAP_API_KEY;
-    if (!key) {
+    this.apiKey = process.env.COINMARKETCAP_API_KEY;
+  }
+
+  private ensureApiKey(): string {
+    if (!this.apiKey) {
       throw new Error('COINMARKETCAP_API_KEY is not configured');
     }
-    this.apiKey = key;
+    return this.apiKey;
   }
 
   async getPrices(symbols: string[]): Promise<Map<string, PriceData>> {
@@ -43,12 +46,14 @@ export class CoinMarketCapService {
     const uniqueSymbols = Array.from(new Set(symbols));
     const symbolsParam = uniqueSymbols.join(',');
 
+    const apiKey = this.ensureApiKey();
+    
     try {
       const response = await fetch(
         `${this.baseUrl}/cryptocurrency/quotes/latest?symbol=${symbolsParam}`,
         {
           headers: {
-            'X-CMC_PRO_API_KEY': this.apiKey,
+            'X-CMC_PRO_API_KEY': apiKey,
             'Accept': 'application/json',
           },
         }

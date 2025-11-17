@@ -13,7 +13,7 @@ export interface ConnectedAccount {
   balance?: number;
   address?: string;
   chainId?: number;
-  chainBadges?: Array<{ chainId: number; badge: string; name: string }>;
+  chainBadges?: Array<{ chainId?: number; networkKey?: string; badge: string; name: string }>;
 }
 
 interface ConnectedAccountsProps {

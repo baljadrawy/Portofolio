@@ -366,10 +366,12 @@ export class DatabaseStorage implements IStorage {
 
   async updateHoldingsPrices(updates: Array<{ id: string; price: number }>): Promise<void> {
     for (const update of updates) {
-      await db
-        .update(holdings)
-        .set({ currentPrice: update.price.toString(), updatedAt: new Date() })
-        .where(eq(holdings.id, update.id));
+      if (update.price != null) {
+        await db
+          .update(holdings)
+          .set({ currentPrice: update.price.toString(), updatedAt: new Date() })
+          .where(eq(holdings.id, update.id));
+      }
     }
   }
 }

@@ -127,9 +127,14 @@ export class EtherscanService {
             const wholePart = balance / divisor;
             const remainder = balance % divisor;
             
-            const balanceStr = remainder > BigInt(0)
-              ? `${wholePart}.${remainder.toString().padStart(decimals, '0').replace(/0+$/, '')}`
-              : wholePart.toString();
+            let balanceStr: string;
+            if (remainder > BigInt(0)) {
+              const decimalPart = remainder.toString().padStart(decimals, '0');
+              const trimmedDecimal = decimalPart.substring(0, 8).replace(/0+$/, '');
+              balanceStr = trimmedDecimal ? `${wholePart}.${trimmedDecimal}` : wholePart.toString();
+            } else {
+              balanceStr = wholePart.toString();
+            }
             
             tokens.push({
               symbol: token.TokenSymbol || 'UNKNOWN',
@@ -215,9 +220,14 @@ export class EtherscanService {
           const wholePart = tokenData.balance / divisor;
           const remainder = tokenData.balance % divisor;
           
-          const balanceStr = remainder > BigInt(0)
-            ? `${wholePart}.${remainder.toString().padStart(tokenData.decimals, '0').replace(/0+$/, '')}`
-            : wholePart.toString();
+          let balanceStr: string;
+          if (remainder > BigInt(0)) {
+            const decimalPart = remainder.toString().padStart(tokenData.decimals, '0');
+            const trimmedDecimal = decimalPart.substring(0, 8).replace(/0+$/, '');
+            balanceStr = trimmedDecimal ? `${wholePart}.${trimmedDecimal}` : wholePart.toString();
+          } else {
+            balanceStr = wholePart.toString();
+          }
           
           tokens.push({
             symbol: tokenData.symbol,

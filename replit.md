@@ -12,6 +12,13 @@ Preferred communication style: Simple, everyday language.
 
 ### November 17, 2025
 
+**Critical Bug Fix: Wallet Sync Numeric Overflow:**
+- Fixed "numeric field overflow" error that prevented EVM wallet syncing
+- Increased holdings amount precision from decimal(20,8) to decimal(30,8) to handle large token balances
+- Limited decimal places to 8 digits maximum when calculating token balances from transactions
+- Now successfully syncs wallets with tokens having very large amounts (e.g., meme tokens with quadrillion supplies)
+- Tested and verified with real wallet addresses containing 900+ trillion token balances
+
 **Real-Time Cryptocurrency Prices via CoinMarketCap API:**
 - Integrated CoinMarketCap API for real-time cryptocurrency price data
 - Created CoinMarketCapService (server/services/coinmarketcap.ts) with lazy API key initialization

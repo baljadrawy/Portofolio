@@ -21,7 +21,7 @@ export const holdings = pgTable("holdings", {
   connectionId: varchar("connection_id").references(() => connections.id, { onDelete: 'cascade' }),
   symbol: text("symbol").notNull(),
   name: text("name").notNull(),
-  amount: decimal("amount", { precision: 20, scale: 8 }).notNull(),
+  amount: decimal("amount", { precision: 30, scale: 8 }).notNull(),
   currentPrice: decimal("current_price", { precision: 20, scale: 2 }),
   avgCost: decimal("avg_cost", { precision: 20, scale: 2 }).notNull().default('0'),
   updatedAt: timestamp("updated_at").defaultNow(),

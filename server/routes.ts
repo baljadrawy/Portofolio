@@ -81,23 +81,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
             c => c.address?.toLowerCase() === address.toLowerCase() && c.chainId === chainId
           );
           
+          let connection;
+          let isNew = false;
+          
           if (existing) {
-            console.log(`[Scan] Connection already exists for ${chainName}, skipping`);
-            results.push({ status: 'fulfilled', value: { chainId, chainName, connection: existing, created: false, status: 'exists' } });
+            console.log(`[Scan] Connection already exists for ${chainName}, will refresh holdings`);
+            connection = existing;
+            
+            // Clear existing holdings and transactions for refresh
+            await storage.deleteHoldingsByConnection(connection.id);
+            console.log(`[Scan] Cleared old holdings for ${chainName}`);
           } else {
             const walletName = customName ? `${customName} - ${chainName}` : `Wallet - ${chainName}`;
-            const connection = await storage.createConnection({
+            connection = await storage.createConnection({
               name: walletName,
               type: 'wallet',
               address: address,
               chainId: chainId,
               status: 'connected'
             });
-            
-            console.log(`[Scan] Created connection for ${chainName} (${hasTokens ? walletData.tokens.length : 0} tokens, ${nativeToken.symbol}: ${walletData.ethBalance})`);
-            
-            results.push({ status: 'fulfilled', value: { chainId, chainName, connection, created: true, status: 'created' } });
+            isNew = true;
+            console.log(`[Scan] Created new connection for ${chainName}`);
           }
+          
+          console.log(`[Scan] Processing ${chainName}: ${hasTokens ? walletData.tokens.length : 0} tokens, ${nativeToken.symbol}: ${walletData.ethBalance}`);
+          
+          // Create holdings for native token
+          if (parseFloat(walletData.ethBalance) > 0) {
+            await storage.createHolding({
+              connectionId: connection.id,
+              symbol: nativeToken.symbol,
+              name: nativeToken.name,
+              amount: walletData.ethBalance,
+              avgCost: '0'
+            });
+            console.log(`[Scan] Created ${nativeToken.symbol} holding: ${walletData.ethBalance}`);
+          }
+          
+          // Create holdings for tokens
+          for (const token of walletData.tokens) {
+            if (parseFloat(token.balance) > 0) {
+              await storage.createHolding({
+                connectionId: connection.id,
+                symbol: token.symbol,
+                name: token.name,
+                amount: token.balance,
+                avgCost: '0'
+              });
+              console.log(`[Scan] Created token holding: ${token.symbol} (${token.balance})`);
+            }
+          }
+          
+          // Create transactions (limit to first 50)
+          for (const tx of walletData.transactions.slice(0, 50)) {
+            const isIncoming = tx.to.toLowerCase() === address.toLowerCase();
+            const nativeValue = (parseFloat(tx.value) / 1e18).toString();
+            
+            if (parseFloat(nativeValue) > 0) {
+              await storage.createTransaction({
+                connectionId: connection.id,
+                type: isIncoming ? 'buy' : 'sell',
+                symbol: nativeToken.symbol,
+                amount: nativeValue,
+                price: '0',
+                total: '0',
+                timestamp: new Date(parseInt(tx.timeStamp) * 1000),
+                source: connection.name
+              });
+            }
+          }
+          
+          // Update connection with sync metadata
+          if (walletData.transactions.length > 0) {
+            const blocks = walletData.transactions.map(tx => parseInt(tx.blockNumber)).filter(b => !isNaN(b));
+            const highestBlock = blocks.length > 0 ? Math.max(...blocks) : 0;
+            
+            await storage.updateConnection(connection.id, {
+              lastBlockScanned: highestBlock,
+              lastTokenScan: new Date(),
+              lastSync: new Date(),
+              status: 'synced'
+            });
+          } else {
+            await storage.updateConnection(connection.id, {
+              lastTokenScan: new Date(),
+              lastSync: new Date(),
+              status: 'synced'
+            });
+          }
+          
+          results.push({ status: 'fulfilled', value: { chainId, chainName, connection, created: isNew, status: isNew ? 'created' : 'refreshed' } });
         } else {
           console.log(`[Scan] No data found on ${chainName}`);
           results.push({ status: 'fulfilled', value: { chainId, chainName, status: 'empty' } });

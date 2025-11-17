@@ -20,6 +20,7 @@ interface EtherscanTokenListResponse {
 
 interface EtherscanTransaction {
   hash: string;
+  blockNumber: string;
   timeStamp: string;
   from: string;
   to: string;

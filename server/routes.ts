@@ -378,19 +378,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const chainId = connection.chainId || SUPPORTED_CHAINS.ETHEREUM;
       const nativeToken = NATIVE_TOKENS[chainId] || { symbol: 'ETH', name: 'Ethereum' };
       
-      console.log(`[Wallet Sync] Starting EVM sync for wallet: ${connection.name} (${connection.address}) on chain ${chainId}`);
+      console.log(`[Wallet Sync] Starting EVM sync (incremental) for wallet: ${connection.name} (${connection.address}) on chain ${chainId}`);
+      console.log(`[Wallet Sync] Last block scanned: ${connection.lastBlockScanned || 'none'}, Last token scan: ${connection.lastTokenScan || 'never'}`);
 
-      const walletData = await etherscanService.getWalletData(connection.address, chainId);
+      const walletData = await etherscanService.getWalletDataIncremental(
+        connection.address, 
+        chainId,
+        connection.lastBlockScanned,
+        connection.lastTokenScan
+      );
 
-      console.log(`[Wallet Sync] Received EVM data - ${nativeToken.symbol}: ${walletData.ethBalance}, Tokens: ${walletData.tokens.length}, Transactions: ${walletData.transactions.length}`);
+      console.log(`[Wallet Sync] Received EVM data - ${nativeToken.symbol}: ${walletData.ethBalance}, Tokens: ${walletData.tokens.length}, Transactions: ${walletData.transactions.length}, New highest block: ${walletData.highestBlock}, Token scan needed: ${walletData.shouldUpdateTokens}`);
       
       if (walletData.warnings && walletData.warnings.length > 0) {
         console.warn('[Wallet Sync] Warnings:', walletData.warnings);
       }
 
-      await storage.deleteHoldingsByConnection(connection.id);
-
-      if (parseFloat(walletData.ethBalance) > 0) {
+      let existingHoldings = await storage.getHoldingsByConnection(connection.id);
+      const existingBySymbol = new Map(existingHoldings.map(h => [h.symbol, h]));
+      
+      const nativeHolding = existingBySymbol.get(nativeToken.symbol);
+      if (nativeHolding) {
+        await storage.updateHolding(nativeHolding.id, { amount: walletData.ethBalance });
+        console.log(`[Wallet Sync] Updated ${nativeToken.symbol} holding: ${walletData.ethBalance}`);
+      } else if (parseFloat(walletData.ethBalance) > 0) {
         await storage.createHolding({
           connectionId: connection.id,
           symbol: nativeToken.symbol,
@@ -398,19 +409,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
           amount: walletData.ethBalance,
           avgCost: '0'
         });
-        console.log(`[Wallet Sync] Added ${nativeToken.symbol} holding: ${walletData.ethBalance}`);
+        console.log(`[Wallet Sync] Created ${nativeToken.symbol} holding: ${walletData.ethBalance}`);
       }
 
-      for (const token of walletData.tokens) {
-        if (parseFloat(token.balance) > 0) {
-          await storage.createHolding({
-            connectionId: connection.id,
-            symbol: token.symbol,
-            name: token.name,
-            amount: token.balance,
-            avgCost: '0'
-          });
-          console.log(`[Wallet Sync] Added token: ${token.symbol} (${token.balance})`);
+      if (walletData.shouldUpdateTokens) {
+        existingHoldings = await storage.getHoldingsByConnection(connection.id);
+        const existingTokensBySymbol = new Map(existingHoldings.map(h => [h.symbol, h]));
+        const newTokenSymbols = new Set(walletData.tokens.map(t => t.symbol));
+        
+        for (const existing of existingHoldings) {
+          if (existing.symbol !== nativeToken.symbol && !newTokenSymbols.has(existing.symbol)) {
+            await storage.deleteHolding(existing.id);
+            console.log(`[Wallet Sync] Removed stale token: ${existing.symbol}`);
+          }
+        }
+        
+        for (const token of walletData.tokens) {
+          if (parseFloat(token.balance) > 0) {
+            const existing = existingTokensBySymbol.get(token.symbol);
+            if (existing) {
+              await storage.updateHolding(existing.id, { 
+                amount: token.balance,
+                name: token.name
+              });
+              console.log(`[Wallet Sync] Updated token: ${token.symbol} (${token.balance})`);
+            } else {
+              await storage.createHolding({
+                connectionId: connection.id,
+                symbol: token.symbol,
+                name: token.name,
+                amount: token.balance,
+                avgCost: '0'
+              });
+              console.log(`[Wallet Sync] Created token: ${token.symbol} (${token.balance})`);
+            }
+          }
         }
       }
 
@@ -434,7 +467,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await storage.updateConnection(connection.id, { 
         status: walletData.warnings && walletData.warnings.length > 0 ? 'synced' : 'synced',
-        lastSync: new Date()
+        lastSync: new Date(),
+        lastBlockScanned: walletData.highestBlock,
+        lastTokenScan: walletData.shouldUpdateTokens ? new Date() : connection.lastTokenScan
       });
 
       console.log(`[Wallet Sync] Completed sync for wallet: ${connection.name}`);

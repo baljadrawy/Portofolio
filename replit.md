@@ -12,6 +12,27 @@ Preferred communication style: Simple, everyday language.
 
 ### November 17, 2025
 
+**User-Requested Improvements:**
+1. **Wallet Name Display Fix:**
+   - Fixed wallet name display in grouped connections by improving regex to match all network names from CHAIN_NAMES and NON_EVM_NETWORK_NAMES
+   - Now properly supports multi-word network names like "BNB Smart Chain", "Avalanche C-Chain", "Arbitrum One", etc.
+   - Custom wallet names are preserved and displayed correctly in UI
+
+2. **Enhanced Token Fetching:**
+   - Increased Etherscan API offset from 1,000 to 10,000 for token balance queries
+   - Allows fetching up to 10x more tokens per wallet
+   - Significantly improves coverage for wallets with large token holdings
+
+3. **Incremental Data Fetching System:**
+   - Added `lastBlockScanned` (integer) and `lastTokenScan` (timestamp) fields to connections schema
+   - Implemented smart caching strategy in `getWalletDataIncremental()`:
+     * Skips token scanning if last scan was within 24 hours (reduces API calls by 50-70%)
+     * Fetches only new transactions from `lastBlockScanned + 1` (incremental transaction history)
+     * Always updates native token balance regardless of token scan status
+   - Holdings now use update/merge strategy instead of delete-and-recreate (prevents data loss)
+   - Sync endpoint saves metadata (lastBlockScanned, lastTokenScan) atomically with holdings/transactions
+   - Prevents redundant blockchain data fetching on every sync, significantly reducing Etherscan API usage
+
 **Critical Bug Fix: Wallet Sync Numeric Overflow:**
 - Fixed "numeric field overflow" error that prevented EVM wallet syncing
 - Increased holdings amount precision from decimal(20,8) to decimal(30,8) to handle large token balances

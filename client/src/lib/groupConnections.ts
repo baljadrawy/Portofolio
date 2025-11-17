@@ -78,7 +78,23 @@ export function groupConnectionsByAddress(
     
     const chainBadges = badges.sort((a, b) => a.name.localeCompare(b.name));
 
-    const displayName = conns[0].name.replace(/\s*-\s*\w+$/, '').trim() || 'Wallet';
+    const allNetworkNames = [
+      ...Object.values(CHAIN_NAMES),
+      ...Object.values(NON_EVM_NETWORK_NAMES)
+    ];
+    
+    let displayName = conns[0].name;
+    
+    for (const networkName of allNetworkNames) {
+      const pattern = `\\s*-\\s*${networkName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`;
+      const regex = new RegExp(pattern, 'i');
+      if (regex.test(displayName)) {
+        displayName = displayName.replace(regex, '').trim();
+        break;
+      }
+    }
+    
+    displayName = displayName || 'Wallet';
     const originalAddress = conns[0].address || normalizedAddress;
 
     grouped.push({

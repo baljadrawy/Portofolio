@@ -13,6 +13,8 @@ export const connections = pgTable("connections", {
   networkKey: text("network_key"), // For non-EVM networks like 'solana'
   status: text("status").notNull().default('synced'), // 'synced', 'syncing', 'error'
   lastSync: timestamp("last_sync"),
+  lastBlockScanned: integer("last_block_scanned"), // Last block number scanned for transactions (incremental sync)
+  lastTokenScan: timestamp("last_token_scan"), // Last time tokens were scanned
   createdAt: timestamp("created_at").defaultNow(),
 });
 

@@ -101,15 +101,13 @@ export class EtherscanService {
   async getTokenBalances(address: string, chainId: number = SUPPORTED_CHAINS.ETHEREUM): Promise<TokenInfo[]> {
     try {
       const chainName = CHAIN_NAMES[chainId] || `Chain ${chainId}`;
-      // First try the addresstokenbalance endpoint (v2, may require PRO subscription)
-      const url = `${ETHERSCAN_BASE_URL}?chainid=${chainId}&module=account&action=addresstokenbalance&address=${address}&page=1&offset=1000&apikey=${this.apiKey}`;
+      const url = `${ETHERSCAN_BASE_URL}?chainid=${chainId}&module=account&action=addresstokenbalance&address=${address}&page=1&offset=10000&apikey=${this.apiKey}`;
       console.log(`[Etherscan] Fetching token balances for ${address} on ${chainName}`);
       const response = await fetch(url);
       const data: EtherscanTokenListResponse = await response.json();
       console.log(`[Etherscan] Token balance response status: ${data.status}, message: ${data.message}, result count: ${Array.isArray(data.result) ? data.result.length : 0}`);
 
       if (data.status === '1' && Array.isArray(data.result) && data.result.length > 0) {
-        // Success! Process the token list
         const tokens: TokenInfo[] = [];
         
         for (const token of data.result) {
@@ -118,7 +116,6 @@ export class EtherscanService {
           if (balance > BigInt(0)) {
             const decimals = parseInt(token.TokenDivisor || '18');
             
-            // Calculate 10^decimals using multiplication to avoid BigInt ** operator
             let divisor = BigInt(1);
             for (let i = 0; i < decimals; i++) {
               divisor *= BigInt(10);
@@ -151,7 +148,6 @@ export class EtherscanService {
         return tokens;
       }
 
-      // Fallback: If addresstokenbalance fails, use tokentx (token transactions) method
       console.log(`[Etherscan] addresstokenbalance failed, falling back to tokentx method`);
       return await this.getTokenBalancesFromTransactions(address, chainId);
     } catch (error) {
@@ -248,11 +244,11 @@ export class EtherscanService {
     }
   }
 
-  async getTransactions(address: string, chainId: number = SUPPORTED_CHAINS.ETHEREUM, limit: number = 100): Promise<EtherscanTransaction[]> {
+  async getTransactions(address: string, chainId: number = SUPPORTED_CHAINS.ETHEREUM, limit: number = 100, startBlock: number = 0): Promise<EtherscanTransaction[]> {
     try {
       const chainName = CHAIN_NAMES[chainId] || `Chain ${chainId}`;
-      const url = `${ETHERSCAN_BASE_URL}?chainid=${chainId}&module=account&action=txlist&address=${address}&startblock=0&endblock=999999999&page=1&offset=${limit}&sort=desc&apikey=${this.apiKey}`;
-      console.log(`[Etherscan] Fetching transactions for ${address} on ${chainName}`);
+      const url = `${ETHERSCAN_BASE_URL}?chainid=${chainId}&module=account&action=txlist&address=${address}&startblock=${startBlock}&endblock=999999999&page=1&offset=${limit}&sort=desc&apikey=${this.apiKey}`;
+      console.log(`[Etherscan] Fetching transactions for ${address} on ${chainName} from block ${startBlock}`);
       const response = await fetch(url);
       const data: EtherscanTxListResponse = await response.json();
       console.log(`[Etherscan] Transactions response status: ${data.status}, result count: ${Array.isArray(data.result) ? data.result.length : 0}`);
@@ -272,10 +268,8 @@ export class EtherscanService {
     const nativeToken = NATIVE_TOKENS[chainId] || { symbol: 'NATIVE', name: 'Native Token' };
     const DELAY_BETWEEN_CALLS = 250; // 250ms delay between API calls to respect rate limits
     
-    // Helper to add delay
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
     
-    // Fetch balance
     let ethBalance = '0';
     try {
       ethBalance = await this.getNativeBalance(address, chainId);
@@ -285,7 +279,6 @@ export class EtherscanService {
     
     await delay(DELAY_BETWEEN_CALLS);
     
-    // Fetch tokens
     let tokens: TokenInfo[] = [];
     try {
       tokens = await this.getTokenBalances(address, chainId);
@@ -295,7 +288,6 @@ export class EtherscanService {
     
     await delay(DELAY_BETWEEN_CALLS);
     
-    // Fetch transactions
     let transactions: EtherscanTransaction[] = [];
     try {
       transactions = await this.getTransactions(address, chainId, 50);
@@ -308,6 +300,80 @@ export class EtherscanService {
       tokens,
       transactions,
       warnings: warnings.length > 0 ? warnings : undefined
+    };
+  }
+
+  async getWalletDataIncremental(
+    address: string, 
+    chainId: number, 
+    lastBlockScanned?: number | null, 
+    lastTokenScan?: Date | null
+  ): Promise<WalletData & { highestBlock?: number; shouldUpdateTokens: boolean }> {
+    const warnings: string[] = [];
+    const nativeToken = NATIVE_TOKENS[chainId] || { symbol: 'NATIVE', name: 'Native Token' };
+    const DELAY_BETWEEN_CALLS = 250;
+    const TOKEN_SCAN_INTERVAL_HOURS = 24;
+    
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+    
+    let ethBalance = '0';
+    try {
+      ethBalance = await this.getNativeBalance(address, chainId);
+    } catch (error: any) {
+      warnings.push(`Failed to fetch ${nativeToken.symbol} balance: ${error?.message || 'Unknown error'}`);
+    }
+    
+    await delay(DELAY_BETWEEN_CALLS);
+    
+    const shouldScanTokens = !lastTokenScan || 
+      (Date.now() - new Date(lastTokenScan).getTime()) > TOKEN_SCAN_INTERVAL_HOURS * 60 * 60 * 1000;
+    
+    let tokens: TokenInfo[] = [];
+    if (shouldScanTokens) {
+      console.log('[Etherscan] Token scan needed (>24h since last scan or first time)');
+      try {
+        tokens = await this.getTokenBalances(address, chainId);
+      } catch (error: any) {
+        warnings.push(`Failed to fetch token balances: ${error?.message || 'Unknown error'}`);
+      }
+      await delay(DELAY_BETWEEN_CALLS);
+    } else {
+      console.log('[Etherscan] Skipping token scan (scanned within last 24h)');
+    }
+    
+    const startBlock = lastBlockScanned ? lastBlockScanned + 1 : 0;
+    console.log(`[Etherscan] Fetching transactions from block ${startBlock} (incremental: ${lastBlockScanned ? 'yes' : 'no'})`);
+    
+    let transactions: EtherscanTransaction[] = [];
+    let highestBlock: number;
+    
+    try {
+      transactions = await this.getTransactions(address, chainId, 1000, startBlock);
+      
+      if (transactions.length > 0) {
+        const blocks = transactions.map(tx => parseInt(tx.blockNumber)).filter(b => !isNaN(b));
+        if (blocks.length > 0) {
+          highestBlock = Math.max(...blocks);
+          console.log(`[Etherscan] Highest block in new transactions: ${highestBlock}`);
+        } else {
+          highestBlock = lastBlockScanned || 0;
+        }
+      } else {
+        highestBlock = lastBlockScanned || 0;
+        console.log('[Etherscan] No new transactions, keeping lastBlockScanned unchanged');
+      }
+    } catch (error: any) {
+      warnings.push(`Failed to fetch transactions: ${error?.message || 'Unknown error'}`);
+      highestBlock = lastBlockScanned || 0;
+    }
+
+    return {
+      ethBalance,
+      tokens,
+      transactions,
+      warnings: warnings.length > 0 ? warnings : undefined,
+      highestBlock,
+      shouldUpdateTokens: shouldScanTokens
     };
   }
 }

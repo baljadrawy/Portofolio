@@ -2,197 +2,73 @@
 
 ## Overview
 
-A comprehensive cryptocurrency portfolio tracking application that aggregates holdings across multiple wallets and exchanges. The platform provides real-time portfolio valuation, performance analytics, transaction history, and multi-source asset management. The application supports 19 EVM-compatible blockchain networks via Etherscan API v2, enabling automatic wallet scanning. It emphasizes data visualization and financial clarity through a sophisticated dashboard interface. Key features include multi-network wallet scanning, custom wallet naming, wallet connection grouping by address, and a unified holdings view across all sources.
+A comprehensive cryptocurrency portfolio tracking application that aggregates holdings across multiple wallets and exchanges. The platform provides real-time portfolio valuation, performance analytics, transaction history, and multi-source asset management. It supports 19 EVM-compatible blockchain networks via Etherscan API v2 and Solana via Solscan API v2, enabling automatic wallet scanning. Key features include multi-network wallet scanning, custom wallet naming, wallet connection grouping by address, and a unified holdings view across all sources with real-time price updates and historical performance tracking. The application aims to provide data visualization and financial clarity through a sophisticated dashboard interface.
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
 
-## Recent Changes
-
-### November 17, 2025
-
-**User-Requested Improvements:**
-1. **Wallet Name Display Fix:**
-   - Fixed wallet name display in grouped connections by improving regex to match all network names from CHAIN_NAMES and NON_EVM_NETWORK_NAMES
-   - Now properly supports multi-word network names like "BNB Smart Chain", "Avalanche C-Chain", "Arbitrum One", etc.
-   - Custom wallet names are preserved and displayed correctly in UI
-
-2. **Enhanced Token Fetching:**
-   - Increased Etherscan API offset from 1,000 to 10,000 for token balance queries
-   - Allows fetching up to 10x more tokens per wallet
-   - Significantly improves coverage for wallets with large token holdings
-
-3. **Incremental Data Fetching System:**
-   - Added `lastBlockScanned` (integer) and `lastTokenScan` (timestamp) fields to connections schema
-   - Implemented smart caching strategy in `getWalletDataIncremental()`:
-     * Skips token scanning if last scan was within 24 hours (reduces API calls by 50-70%)
-     * Fetches only new transactions from `lastBlockScanned + 1` (incremental transaction history)
-     * Always updates native token balance regardless of token scan status
-   - Holdings now use update/merge strategy instead of delete-and-recreate (prevents data loss)
-   - Sync endpoint saves metadata (lastBlockScanned, lastTokenScan) atomically with holdings/transactions
-   - Prevents redundant blockchain data fetching on every sync, significantly reducing Etherscan API usage
-
-**Critical Bug Fix: Wallet Sync Numeric Overflow:**
-- Fixed "numeric field overflow" error that prevented EVM wallet syncing
-- Increased holdings amount precision from decimal(20,8) to decimal(30,8) to handle large token balances
-- Limited decimal places to 8 digits maximum when calculating token balances from transactions
-- Now successfully syncs wallets with tokens having very large amounts (e.g., meme tokens with quadrillion supplies)
-- Tested and verified with real wallet addresses containing 900+ trillion token balances
-
-**Real-Time Cryptocurrency Prices via CoinMarketCap API:**
-- Integrated CoinMarketCap API for real-time cryptocurrency price data
-- Created CoinMarketCapService (server/services/coinmarketcap.ts) with lazy API key initialization
-- Added `currentPrice` column to holdings table to store latest prices
-- Implemented POST /api/prices/update endpoint to fetch and update all holding prices
-- Added price update button on Dashboard with loading states and Arabic toast notifications
-- System fetches prices for 25+ unique cryptocurrency symbols in a single API call
-- Warnings logged when CoinMarketCap doesn't return prices for specific symbols
-- Price data includes: current price, 24h change %, 7d change %, market cap, and 24h volume
-- Smart symbol filtering: normalizes to uppercase, removes invalid characters, supports dots for wrapped tokens
-- Fixed apiRequest parameter order bug in Dashboard.tsx price update mutation
-
-**Historical Performance Tracking:**
-- Created portfolio_snapshots table to store historical portfolio valuations
-- Added GET /api/portfolio/history endpoint (returns last 30 snapshots by default)
-- Implemented automatic snapshot creation after each price update
-- Built PerformanceChart component using Recharts for visualizing portfolio value over time
-- Chart displays on Dashboard with Arabic labels ("الأداء التاريخي للمحفظة")
-- Snapshots include: total portfolio value, 24h change amount, and timestamp
-- Historical data persists in PostgreSQL and survives application restarts
-
-### November 16, 2025
-
-**PostgreSQL Database Migration:**
-- Successfully migrated from in-memory storage (MemStorage) to persistent PostgreSQL database
-- Created DatabaseStorage class implementing IStorage interface using Drizzle ORM
-- All data now persists across application restarts
-- Added server/db.ts for database connection management via Neon Pool
-- Executed schema migration with `npm run db:push` successfully
-- All existing features (connections, holdings, transactions) now use database storage
-- Sample data initialization checks for existing data before creating
-- Foreign key constraints ensure cascading deletes (holdings and transactions deleted when connection is removed)
-
-### November 13, 2025
-
-**Binance Exchange Integration:**
-- Implemented full Binance exchange integration for centralized exchange portfolio tracking
-- Created Binance service (server/services/binance.ts) using official `binance` npm package for API communication
-- Added backend endpoint: POST /api/exchange/sync/:connectionId for syncing exchange balances
-- Exchange connections use undefined chainNamespace to distinguish from blockchain wallets
-- Security improvement: API keys excluded from GET responses, only stored in memory during sync operations
-- Added exchange management UI in Settings with input fields for name, API key, and API secret
-- Sync button appears next to exchange connections when API credentials are configured (hasApiKey = true)
-- Arabic toast notifications for sync status: "جاري المزامنة" (syncing), "تمت المزامنة بنجاح" (success), "خطأ في المزامنة" (error)
-- Requires user's Binance API key and secret per connection (stored in MemStorage)
-- Successfully tested: UI flow, connection creation, sync button functionality, and error handling
-
-**Solana Blockchain Integration:**
-- Completed full Solana blockchain support with dual-namespace architecture
-- Created Solscan service (server/services/solscan.ts) with API v2 support for fetching Solana wallet data and token balances
-- Added backend endpoint: POST /api/wallet/scan-solana for scanning Solana wallets
-- Updated sync endpoint to handle both EVM (via Etherscan) and Solana (via Solscan) based on chainNamespace field
-- Extended MemStorage, schema, and grouping logic to support chainNamespace and networkKey fields
-- Added Solana wallet section in Settings UI with dedicated input fields (name and address)
-- Updated groupConnections.ts to display Solana network badges ("SOL") alongside EVM badges
-- Requires valid SOLSCAN_API_KEY secret for Pro API subscription
-- Arabic UI labels: "محافظ Solana" section with "اسم المحفظة" and "عنوان المحفظة" fields
-
-**Dashboard Tabs Organization:**
-- Reorganized Dashboard with tabs for better content organization
-- Tab 1: "الأصول والممتلكات" (Holdings) - Contains Asset Allocation Chart and Holdings Table
-- Tab 2: "سجل المعاملات" (Transaction History) - Dedicated tab for all transactions
-- Connected Accounts section always visible at bottom
-- Increased holdings table pagination from 10 to 100 items per page for better visibility
-
-**Custom Wallet Naming Feature:**
-- Added wallet name input field in Settings page before address field
-- Users can now provide custom names for their wallets (optional)
-- Custom names are used in format: "{CustomName} - {ChainName}" for multi-network connections
-- Updated backend scan-all-networks endpoint to accept optional `name` parameter
-- Arabic UI: "اسم المحفظة" label with placeholder "مثال: محفظتي الرئيسية"
-- If no custom name provided, defaults to "Wallet - {ChainName}" format
-
-**Wallet Connection Grouping Implementation:**
-- Implemented wallet grouping by address - wallets with same address across different chains now display as single entry
-- Added CHAIN_ABBREVIATIONS mapping in shared/networks.ts for compact network badges (ETH, BSC, MATIC, ARB, OP, BASE, etc.)
-- Created groupConnectionsByAddress utility function in client/src/lib/groupConnections.ts
-- Normalizes addresses to lowercase for case-insensitive grouping
-- Aggregates balances across all networks for same address
-- Updated ConnectedAccounts and SettingsPage components to display grouped wallets with network badges
-
 ## System Architecture
 
 ### UI/UX Decisions
 
-The application features a modern, professional crypto tracking aesthetic. It utilizes `shadcn/ui` for accessible, customizable components, styled with Tailwind CSS. A custom design system includes a dark navy primary, royal blue accents, and crypto green/red for performance indicators. It supports both light and dark modes with persistent theme selection.
+The application features a modern, professional crypto tracking aesthetic using `shadcn/ui` components styled with Tailwind CSS. It incorporates a custom design system with a dark navy primary, royal blue accents, and crypto green/red for performance indicators, supporting both light and dark modes with persistent theme selection.
 
 ### Technical Implementations
 
-The application uses a monorepo structure with shared TypeScript types between the client and server.
+The application uses a monorepo structure with shared TypeScript types.
 
 **Frontend:**
 - **Framework:** React with TypeScript, Vite for bundling.
 - **Routing:** Wouter for client-side routing.
-- **State Management:** TanStack Query for server state and caching, local component state with `useState`, and Context API for theme management.
-- **Key Components:** Portfolio Overview, Asset Allocation Chart (using Recharts), Holdings Table, Transaction History, and Connected Accounts management.
-- **PWA:** Progressive Web App features including installability, offline support (via service worker caching), and app-like experience with auto-updates.
+- **State Management:** TanStack Query for server state and caching, local component state, and Context API for theme management.
+- **Key Components:** Portfolio Overview, Asset Allocation Chart (Recharts), Holdings Table, Transaction History, and Connected Accounts management.
+- **PWA:** Progressive Web App features including installability, offline support, and auto-updates.
 
 **Backend:**
 - **Framework:** Express.js with TypeScript for a RESTful API.
-- **API Design:** RESTful endpoints with centralized route registration, request/response logging, and error handling.
-- **Data Access:** Abstract `IStorage` interface implemented via `DatabaseStorage` class using Drizzle ORM for PostgreSQL.
-- **Data Storage:** PostgreSQL database via Neon (serverless PostgreSQL hosting) with Drizzle ORM for type-safe queries, supporting `connections`, `holdings`, `transactions`, and `users` tables with proper foreign key constraints.
+- **API Design:** RESTful endpoints with centralized route registration, logging, and error handling.
+- **Data Access:** Abstract `IStorage` interface implemented via `DatabaseStorage` using Drizzle ORM for PostgreSQL.
+- **Data Storage:** PostgreSQL database via Neon (serverless hosting) with Drizzle ORM, supporting `connections`, `holdings`, `transactions`, and `users` tables.
 
 ### Feature Specifications
 
-- **Multi-Network Wallet Scanning:** 
-  - **EVM Networks:** Automatically scans wallet addresses across 19 supported EVM-compatible networks, handling rate limiting, partial failures, and providing clear status messages. Networks include Layer 1s (Ethereum, BNB Smart Chain, Polygon, Avalanche, Fantom, Gnosis, Celo), Layer 2s (Arbitrum One/Nova, Optimism, Base, zkSync Era, Polygon zkEVM, Linea, Scroll, Blast, Mantle), and Polkadot/Kusama Parachains (Moonbeam, Moonriver).
-  - **Solana Network:** Supports Solana blockchain wallet scanning using Solscan API v2 with dedicated UI section for Solana wallet management.
-- **Custom Wallet Naming:** Allows users to provide optional custom names for their wallets, which are then used in the UI for clarity.
-- **Wallet Connection Grouping:** Groups connections by wallet address, displaying them as a single entry with network badges for all chains where holdings exist. Supports both EVM and non-EVM (Solana) networks with appropriate badge display.
-- **Unified Holdings View:** Aggregates all assets from all networks (EVM and Solana) into a single view on the dashboard, displaying network names next to asset symbols and consolidating for allocation charts.
+- **Multi-Network Wallet Scanning:**
+  - **EVM Networks:** Supports 19 EVM-compatible networks (Layer 1s: Ethereum, BNB Smart Chain, Polygon, Avalanche, Fantom, Gnosis, Celo; Layer 2s: Arbitrum One/Nova, Optimism, Base, zkSync Era, Polygon zkEVM, Linea, Scroll, Blast, Mantle; Parachains: Moonbeam, Moonriver) via Etherscan API. Handles rate limiting and partial failures.
+  - **Solana Network:** Supports Solana blockchain via Solscan API v2 with dedicated UI.
+- **Custom Wallet Naming:** Allows users to provide optional custom names for wallets.
+- **Wallet Connection Grouping:** Groups connections by wallet address, displaying a single entry with network badges.
+- **Unified Holdings View:** Aggregates all assets from all networks (EVM and Solana) into a single dashboard view, displaying network names and consolidating for allocation charts.
+- **Real-Time Price Tracking:** Integrates CoinMarketCap and CoinGecko APIs for real-time cryptocurrency price data, including 24h/7d changes, market cap, and volume. Implements intelligent scam token filtering and a dual-source fetching strategy.
+- **Historical Performance Tracking:** Stores historical portfolio valuations in `portfolio_snapshots` and visualizes performance over time using Recharts.
+- **Exchange Integration:** Supports Binance exchange integration for centralized exchange portfolio tracking.
+- **Incremental Data Fetching:** Implements smart caching and incremental transaction fetching to reduce API calls and improve efficiency.
 
 ### System Design Choices
 
-- **Monorepo:** Facilitates shared TypeScript types between client and server, preventing API contract mismatches.
-- **Abstract Storage Layer:** Uses IStorage interface with DatabaseStorage implementation for production-ready PostgreSQL persistence via Drizzle ORM.
-- **Client-Side Data Fetching with React Query:** Manages real-time data updates, caching, and aggregation on the client, enabling optimistic UI updates and request deduplication.
-- **`shadcn/ui` Component Library:** Chosen for rapid UI development with full customization flexibility without adding runtime dependencies.
-- **Type Safety:** Achieved through shared schema definitions, Zod validation, and Drizzle type inference to ensure frontend/backend type synchronization.
+- **Monorepo:** Facilitates shared TypeScript types between client and server.
+- **Abstract Storage Layer:** Uses `IStorage` interface with `DatabaseStorage` implementation for PostgreSQL persistence.
+- **Client-Side Data Fetching with React Query:** Manages real-time data updates, caching, and aggregation.
+- **`shadcn/ui` Component Library:** Chosen for rapid UI development with customization flexibility.
+- **Type Safety:** Achieved through shared schema definitions, Zod validation, and Drizzle type inference.
 
 ## External Dependencies
 
 ### Third-Party Services
-- **Neon Database:** Serverless PostgreSQL hosting for persistent data storage (active in production).
-- **Etherscan API v2:** Used for blockchain data retrieval across supported EVM networks.
-- **Solscan API v2:** Used for Solana blockchain data retrieval including wallet balances and token metadata.
-- **Binance API:** Used for exchange portfolio tracking and balance retrieval via official `binance` npm package.
-- **CoinMarketCap API:** Used for real-time cryptocurrency price data including current prices, 24h/7d changes, market cap, and trading volume.
+- **Neon Database:** Serverless PostgreSQL hosting.
+- **Etherscan API v2:** Blockchain data retrieval for EVM networks.
+- **Solscan API v2:** Blockchain data retrieval for Solana network.
+- **Binance API:** Exchange portfolio tracking and balance retrieval.
+- **CoinMarketCap API:** Real-time cryptocurrency price data (primary source).
+- **CoinGecko API:** Real-time cryptocurrency price data (fallback source).
 
 ### Key NPM Packages
 
 **Frontend:**
-- `react`, `react-dom`
-- `@tanstack/react-query`
-- `wouter`
-- `recharts`
-- `@radix-ui/*` (for UI primitives)
-- `tailwindcss`
-- `class-variance-authority`
-- `lucide-react`
-- `react-hook-form`
-- `@hookform/resolvers`
+- `react`, `react-dom`, `@tanstack/react-query`, `wouter`, `recharts`, `@radix-ui/*`, `tailwindcss`, `class-variance-authority`, `lucide-react`, `react-hook-form`, `@hookform/resolvers`.
 
 **Backend:**
-- `express`
-- `drizzle-orm`
-- `@neondatabase/serverless`
-- `zod`
+- `express`, `drizzle-orm`, `@neondatabase/serverless`, `zod`.
 
 **Development Tools:**
-- `vite`
-- `tsx`
-- `esbuild`
-- `typescript`
-- `drizzle-zod`
+- `vite`, `tsx`, `esbuild`, `typescript`, `drizzle-zod`.

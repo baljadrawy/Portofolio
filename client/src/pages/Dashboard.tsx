@@ -1,4 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { PortfolioOverview } from "@/components/PortfolioOverview";
 import { AssetAllocationChart } from "@/components/AssetAllocationChart";
 import { HoldingsTable, type Holding } from "@/components/HoldingsTable";
@@ -48,13 +49,21 @@ export default function Dashboard() {
       const response = await apiRequest('POST', '/api/prices/update');
       return await response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/portfolio/summary'] });
       queryClient.invalidateQueries({ queryKey: ['/api/portfolio/history'] });
       queryClient.invalidateQueries({ queryKey: ['/api/holdings'] });
+      
+      // Store last update time
+      localStorage.setItem('lastPriceUpdate', new Date().toISOString());
+      
+      const message = data.scamTokensFiltered > 0 
+        ? `تم تحديث ${data.updated} سعر وتصفية ${data.scamTokensFiltered} توكن احتيالي`
+        : `تم تحديث ${data.updated} سعر`;
+      
       toast({
         title: "تم بنجاح",
-        description: "تم تحديث الأسعار بنجاح",
+        description: message,
       });
     },
     onError: () => {
@@ -65,6 +74,20 @@ export default function Dashboard() {
       });
     },
   });
+
+  // Auto-refresh prices on mount if needed (every 5 minutes)
+  useEffect(() => {
+    if (!portfolio || portfolio.holdings.length === 0) return;
+    
+    const lastUpdate = localStorage.getItem('lastPriceUpdate');
+    const shouldUpdate = !lastUpdate || 
+      (new Date().getTime() - new Date(lastUpdate).getTime()) > 5 * 60 * 1000;
+    
+    if (shouldUpdate) {
+      console.log('[Dashboard] Auto-refreshing prices...');
+      updatePricesMutation.mutate();
+    }
+  }, [portfolio?.holdings.length]);
 
 
   const handleDisconnect = async (groupId: string) => {

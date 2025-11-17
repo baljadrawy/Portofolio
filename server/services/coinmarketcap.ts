@@ -14,13 +14,14 @@ interface CMCQuoteResponse {
   };
 }
 
-interface PriceData {
+export interface PriceData {
   symbol: string;
   price: number;
-  change24h: number;
-  change7d: number;
-  marketCap: number;
-  volume24h: number;
+  change24h?: number;
+  change7d?: number;
+  marketCap?: number;
+  volume24h?: number;
+  source: 'coinmarketcap' | 'coingecko';
 }
 
 export class CoinMarketCapService {
@@ -96,6 +97,7 @@ export class CoinMarketCapService {
             change7d: usdQuote.percent_change_7d,
             marketCap: usdQuote.market_cap,
             volume24h: usdQuote.volume_24h,
+            source: 'coinmarketcap',
           });
         }
       }

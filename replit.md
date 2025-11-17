@@ -10,6 +10,27 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### November 17, 2025
+
+**Real-Time Cryptocurrency Prices via CoinMarketCap API:**
+- Integrated CoinMarketCap API for real-time cryptocurrency price data
+- Created CoinMarketCapService (server/services/coinmarketcap.ts) with lazy API key initialization
+- Added `currentPrice` column to holdings table to store latest prices
+- Implemented POST /api/prices/update endpoint to fetch and update all holding prices
+- Added price update button on Dashboard with loading states and Arabic toast notifications
+- System fetches prices for 25+ unique cryptocurrency symbols in a single API call
+- Warnings logged when CoinMarketCap doesn't return prices for specific symbols
+- Price data includes: current price, 24h change %, 7d change %, market cap, and 24h volume
+
+**Historical Performance Tracking:**
+- Created portfolio_snapshots table to store historical portfolio valuations
+- Added GET /api/portfolio/history endpoint (returns last 30 snapshots by default)
+- Implemented automatic snapshot creation after each price update
+- Built PerformanceChart component using Recharts for visualizing portfolio value over time
+- Chart displays on Dashboard with Arabic labels ("الأداء التاريخي للمحفظة")
+- Snapshots include: total portfolio value, 24h change amount, and timestamp
+- Historical data persists in PostgreSQL and survives application restarts
+
 ### November 16, 2025
 
 **PostgreSQL Database Migration:**
@@ -117,7 +138,7 @@ The application uses a monorepo structure with shared TypeScript types between t
 - **Etherscan API v2:** Used for blockchain data retrieval across supported EVM networks.
 - **Solscan API v2:** Used for Solana blockchain data retrieval including wallet balances and token metadata.
 - **Binance API:** Used for exchange portfolio tracking and balance retrieval via official `binance` npm package.
-- **Cryptocurrency Price APIs:** Planned integration for real-time price data (currently uses mock data).
+- **CoinMarketCap API:** Used for real-time cryptocurrency price data including current prices, 24h/7d changes, market cap, and trading volume.
 
 ### Key NPM Packages
 

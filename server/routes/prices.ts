@@ -83,7 +83,7 @@ export function registerPriceRoutes(app: Express) {
         if (!mappedSymbol) continue; // Skip scam tokens
         
         const priceData = priceMap.get(mappedSymbol);
-        if (priceData) {
+        if (priceData && priceData.price > 0) {
           updates.push({
             id: holding.id,
             price: priceData.price

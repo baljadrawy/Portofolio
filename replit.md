@@ -8,6 +8,13 @@ A comprehensive cryptocurrency portfolio tracking application that aggregates ho
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Updates (November 17, 2025)
+
+### Price System Improvements
+- **Fixed Polygon (MATIC) Price Fetching**: Updated symbol mapping to reflect Polygon's rebrand from MATIC to POL in CoinMarketCap. Both MATIC and WMATIC now correctly map to POL for price lookups.
+- **Enhanced Price Validation**: Added strict validation to ensure only positive prices (> 0) are stored in database, preventing null/zero price updates.
+- **Improved Update Efficiency**: Optimized price update flow to skip invalid price data early in the process, reducing unnecessary database operations.
+
 ## System Architecture
 
 ### UI/UX Decisions

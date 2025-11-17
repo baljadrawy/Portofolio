@@ -708,6 +708,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let totalCost = 0;
 
       const holdingsWithPrices = holdings.map(holding => {
+        // Use stored price from database first, fallback to CoinGecko
+        const storedPrice = holding.currentPrice 
+          ? (typeof holding.currentPrice === 'string' ? parseFloat(holding.currentPrice) : holding.currentPrice)
+          : 0;
+        
         const symbolMap: Record<string, string> = {
           'btc': 'bitcoin',
           'eth': 'ethereum',
@@ -721,7 +726,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const coinId = symbolMap[holding.symbol.toLowerCase()] || holding.symbol.toLowerCase();
         const priceData = prices[coinId];
-        const currentPrice = priceData?.usd || 0;
+        
+        // Prefer stored price, fallback to CoinGecko
+        const currentPrice = storedPrice > 0 ? storedPrice : (priceData?.usd || 0);
         const change24hPercent = priceData?.usd_24h_change || 0;
         
         const amount = parseFloat(holding.amount);

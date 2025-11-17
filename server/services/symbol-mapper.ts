@@ -3,7 +3,7 @@ export class SymbolMapper {
     // Wrapped tokens - map to native tokens
     ['WETH', 'ETH'],
     ['WBTC', 'BTC'],
-    ['WMATIC', 'MATIC'],
+    ['WMATIC', 'POL'],  // Polygon rebranded from MATIC to POL
     ['WAVAX', 'AVAX'],
     ['WBNB', 'BNB'],
     ['WFTM', 'FTM'],
@@ -27,9 +27,9 @@ export class SymbolMapper {
     ['TUSD', 'TUSD'],
     ['UST', 'UST'],
     
-    // Bridged tokens
-    ['MATIC', 'MATIC'],
-    ['POL', 'MATIC'],
+    // Bridged tokens and rebrands
+    ['MATIC', 'POL'],  // Polygon rebranded from MATIC to POL
+    ['POL', 'POL'],
     ['AVAX', 'AVAX'],
     ['FTM', 'FTM'],
     ['GLMR', 'GLMR'],

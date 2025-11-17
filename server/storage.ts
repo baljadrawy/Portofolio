@@ -366,7 +366,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateHoldingsPrices(updates: Array<{ id: string; price: number }>): Promise<void> {
     for (const update of updates) {
-      if (update.price != null) {
+      if (update.price != null && update.price > 0) {
         await db
           .update(holdings)
           .set({ currentPrice: update.price.toString(), updatedAt: new Date() })

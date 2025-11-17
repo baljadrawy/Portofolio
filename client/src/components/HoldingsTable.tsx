@@ -144,14 +144,21 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
                   <TableCell className="text-right">
                     <div className="font-mono">${holding.avgCost.toLocaleString()}</div>
                   </TableCell>
-                  <TableCell className="text-right font-mono">${holding.currentPrice.toLocaleString()}</TableCell>
+                  <TableCell className="text-right font-mono">
+                    ${holding.currentPrice >= 1 
+                      ? holding.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                      : holding.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })
+                    }
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className={`flex items-center justify-end gap-1 ${holding.change24h >= 0 ? 'text-success' : 'text-destructive'}`}>
                       {holding.change24h >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                       <span className="font-semibold">{holding.change24h >= 0 ? '+' : ''}{holding.change24h.toFixed(2)}%</span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-right font-mono font-semibold">${holding.value.toLocaleString()}</TableCell>
+                  <TableCell className="text-right font-mono font-semibold">
+                    ${holding.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex flex-col items-end">
                       <div className={`font-semibold font-mono ${holding.profitLoss >= 0 ? 'text-success' : 'text-destructive'}`}>

@@ -28,6 +28,8 @@ Preferred communication style: Simple, everyday language.
 - System fetches prices for 25+ unique cryptocurrency symbols in a single API call
 - Warnings logged when CoinMarketCap doesn't return prices for specific symbols
 - Price data includes: current price, 24h change %, 7d change %, market cap, and 24h volume
+- Smart symbol filtering: normalizes to uppercase, removes invalid characters, supports dots for wrapped tokens
+- Fixed apiRequest parameter order bug in Dashboard.tsx price update mutation
 
 **Historical Performance Tracking:**
 - Created portfolio_snapshots table to store historical portfolio valuations

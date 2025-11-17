@@ -43,7 +43,24 @@ export class CoinMarketCapService {
       return new Map();
     }
 
-    const uniqueSymbols = Array.from(new Set(symbols));
+    // Filter and normalize cryptocurrency symbols
+    const validSymbols = symbols
+      .map(symbol => symbol.trim().toUpperCase())
+      .filter(symbol => {
+        // Must be alphanumeric only (A-Z, 0-9, and hyphen/underscore are acceptable)
+        // Also allow dots for wrapped tokens (e.g., WETH.e)
+        return symbol.length > 0 && /^[A-Z0-9_.-]+$/.test(symbol);
+      });
+
+    if (validSymbols.length === 0) {
+      console.log('[CoinMarketCap] No valid symbols to fetch prices for');
+      return new Map();
+    }
+
+    // Remove duplicates after normalization
+    const uniqueSymbols = Array.from(new Set(validSymbols));
+    console.log(`[CoinMarketCap] Filtered ${symbols.length} symbols down to ${uniqueSymbols.length} valid symbols`);
+    
     const symbolsParam = uniqueSymbols.join(',');
 
     const apiKey = this.ensureApiKey();

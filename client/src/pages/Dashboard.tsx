@@ -45,7 +45,8 @@ export default function Dashboard() {
 
   const updatePricesMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest<any>('/api/prices/update', 'POST');
+      const response = await apiRequest('POST', '/api/prices/update');
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/portfolio/summary'] });

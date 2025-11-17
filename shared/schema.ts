@@ -22,8 +22,16 @@ export const holdings = pgTable("holdings", {
   symbol: text("symbol").notNull(),
   name: text("name").notNull(),
   amount: decimal("amount", { precision: 20, scale: 8 }).notNull(),
+  currentPrice: decimal("current_price", { precision: 20, scale: 2 }),
   avgCost: decimal("avg_cost", { precision: 20, scale: 2 }).notNull().default('0'),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const portfolioSnapshots = pgTable("portfolio_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  totalValue: decimal("total_value", { precision: 20, scale: 2 }).notNull(),
+  totalChange24h: decimal("total_change_24h", { precision: 10, scale: 2 }),
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
 });
 
 export const transactions = pgTable("transactions", {
@@ -50,6 +58,11 @@ export const insertHoldingSchema = createInsertSchema(holdings).omit({
   updatedAt: true,
 });
 
+export const insertPortfolioSnapshotSchema = createInsertSchema(portfolioSnapshots).omit({
+  id: true,
+  timestamp: true,
+});
+
 export const insertTransactionSchema = createInsertSchema(transactions).omit({
   id: true,
 });
@@ -60,6 +73,9 @@ export type Connection = typeof connections.$inferSelect;
 
 export type InsertHolding = z.infer<typeof insertHoldingSchema>;
 export type Holding = typeof holdings.$inferSelect;
+
+export type InsertPortfolioSnapshot = z.infer<typeof insertPortfolioSnapshotSchema>;
+export type PortfolioSnapshot = typeof portfolioSnapshots.$inferSelect;
 
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 export type Transaction = typeof transactions.$inferSelect;

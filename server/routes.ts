@@ -6,8 +6,10 @@ import { etherscanService } from "./services/etherscan";
 import { solscanService } from "./services/solscan";
 import { binanceService } from "./services/binance";
 import { SUPPORTED_CHAINS, NATIVE_TOKENS, CHAIN_NAMES, NON_EVM_NETWORKS, NON_EVM_NETWORK_NAMES, NON_EVM_NATIVE_TOKENS } from "@shared/networks";
+import { registerPriceRoutes } from "./routes/prices";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  registerPriceRoutes(app);
   // Connection routes
   app.get("/api/connections", async (_req, res) => {
     try {

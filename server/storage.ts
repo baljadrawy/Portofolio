@@ -7,10 +7,13 @@ import {
   type InsertHolding,
   type Transaction,
   type InsertTransaction,
+  type PortfolioSnapshot,
+  type InsertPortfolioSnapshot,
   users,
   connections,
   holdings,
-  transactions
+  transactions,
+  portfolioSnapshots
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
@@ -42,6 +45,14 @@ export interface IStorage {
   getAllTransactions(): Promise<Transaction[]>;
   getTransactionsByConnection(connectionId: string): Promise<Transaction[]>;
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
+
+  // Portfolio snapshot methods
+  createPortfolioSnapshot(snapshot: InsertPortfolioSnapshot): Promise<PortfolioSnapshot>;
+  getPortfolioSnapshots(limit?: number): Promise<PortfolioSnapshot[]>;
+  
+  // Price update methods
+  updateHoldingPrice(id: string, price: number): Promise<Holding | undefined>;
+  updateHoldingsPrices(updates: Array<{ id: string; price: number }>): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -139,11 +150,42 @@ export class MemStorage implements IStorage {
       symbol: insertHolding.symbol,
       name: insertHolding.name,
       amount: insertHolding.amount,
+      currentPrice: insertHolding.currentPrice ?? null,
       avgCost: insertHolding.avgCost ?? '0',
       updatedAt: new Date(),
     };
     this.holdings.set(id, holding);
     return holding;
+  }
+
+  async updateHoldingPrice(id: string, price: number): Promise<Holding | undefined> {
+    const holding = this.holdings.get(id);
+    if (!holding) return undefined;
+    
+    const updated = { ...holding, currentPrice: price.toString(), updatedAt: new Date() };
+    this.holdings.set(id, updated);
+    return updated;
+  }
+
+  async updateHoldingsPrices(updates: Array<{ id: string; price: number }>): Promise<void> {
+    for (const update of updates) {
+      await this.updateHoldingPrice(update.id, update.price);
+    }
+  }
+
+  async createPortfolioSnapshot(insertSnapshot: InsertPortfolioSnapshot): Promise<PortfolioSnapshot> {
+    const id = randomUUID();
+    const snapshot: PortfolioSnapshot = {
+      id,
+      totalValue: insertSnapshot.totalValue,
+      totalChange24h: insertSnapshot.totalChange24h ?? null,
+      timestamp: new Date(),
+    };
+    return snapshot;
+  }
+
+  async getPortfolioSnapshots(limit: number = 30): Promise<PortfolioSnapshot[]> {
+    return [];
   }
 
   async updateHolding(id: string, updates: Partial<Holding>): Promise<Holding | undefined> {
@@ -298,6 +340,37 @@ export class DatabaseStorage implements IStorage {
   async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
     const [transaction] = await db.insert(transactions).values(insertTransaction).returning();
     return transaction;
+  }
+
+  async createPortfolioSnapshot(insertSnapshot: InsertPortfolioSnapshot): Promise<PortfolioSnapshot> {
+    const [snapshot] = await db.insert(portfolioSnapshots).values(insertSnapshot).returning();
+    return snapshot;
+  }
+
+  async getPortfolioSnapshots(limit: number = 30): Promise<PortfolioSnapshot[]> {
+    return await db
+      .select()
+      .from(portfolioSnapshots)
+      .orderBy(desc(portfolioSnapshots.timestamp))
+      .limit(limit);
+  }
+
+  async updateHoldingPrice(id: string, price: number): Promise<Holding | undefined> {
+    const [updated] = await db
+      .update(holdings)
+      .set({ currentPrice: price.toString(), updatedAt: new Date() })
+      .where(eq(holdings.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async updateHoldingsPrices(updates: Array<{ id: string; price: number }>): Promise<void> {
+    for (const update of updates) {
+      await db
+        .update(holdings)
+        .set({ currentPrice: update.price.toString(), updatedAt: new Date() })
+        .where(eq(holdings.id, update.id));
+    }
   }
 }
 

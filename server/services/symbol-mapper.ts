@@ -45,18 +45,23 @@ export class SymbolMapper {
     return this.symbolMap.get(normalized) || normalized;
   }
 
-  static isValidSymbol(symbol: string): boolean {
+  static isValidSymbol(symbol: string, name?: string): boolean {
     if (!symbol || symbol.length === 0) return false;
     
     const normalized = symbol.trim().toUpperCase();
     
-    // Filter out obvious scam/spam tokens
+    // Filter out obvious scam/spam tokens by symbol
     const scamPatterns = [
       /HTTP[S]?:\/\//i,       // Contains URLs
       /WWW\./i,               // Contains www.
       /\.COM/i,               // Contains .com
       /\.IO/i,                // Contains .io
       /\.NET/i,               // Contains .net
+      /\.VIP/i,               // Contains .vip
+      /\.XYZ/i,               // Contains .xyz
+      /\.TOP/i,               // Contains .top
+      /\.PRO/i,               // Contains .pro
+      /\.ME/i,                // Contains .me
       /CLAIM/i,               // Claim airdrop scams
       /AIRDROP/i,             // Airdrop scams
       /REWARD/i,              // Reward scams
@@ -78,6 +83,10 @@ export class SymbolMapper {
       if (pattern.test(symbol) || pattern.test(normalized)) {
         return false;
       }
+      // Also check name if provided
+      if (name && pattern.test(name)) {
+        return false;
+      }
     }
     
     // Must be reasonable length
@@ -90,8 +99,8 @@ export class SymbolMapper {
     return true;
   }
 
-  static cleanAndMapSymbol(symbol: string): string | null {
-    if (!this.isValidSymbol(symbol)) {
+  static cleanAndMapSymbol(symbol: string, name?: string): string | null {
+    if (!this.isValidSymbol(symbol, name)) {
       return null;
     }
     return this.mapSymbol(symbol);

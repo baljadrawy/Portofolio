@@ -28,7 +28,7 @@ export function registerPriceRoutes(app: Express) {
       
       for (const holding of holdings) {
         const originalSymbol = holding.symbol;
-        const cleanedSymbol = SymbolMapper.cleanAndMapSymbol(originalSymbol);
+        const cleanedSymbol = SymbolMapper.cleanAndMapSymbol(originalSymbol, holding.name);
         
         if (!cleanedSymbol) {
           scamTokens.push(originalSymbol);

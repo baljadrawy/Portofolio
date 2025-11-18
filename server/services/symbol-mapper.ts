@@ -3,6 +3,9 @@ export class SymbolMapper {
   private static scamTokens = new Set([
     'GME', // GameStop meme token scams
     'COC', // CorgiCash and similar scam airdrops
+    'NC', // Node scams
+    'DEBANK', // DeBank badge scams
+    'NODEPAY', // NodePay scams
   ]);
 
   private static symbolMap: Map<string, string> = new Map([
@@ -73,6 +76,9 @@ export class SymbolMapper {
       /\.TOP/i,               // Contains .top
       /\.PRO/i,               // Contains .pro
       /\.ME/i,                // Contains .me
+      /\.ORG/i,               // Contains .org
+      /\.INFO/i,              // Contains .info
+      /\.ONLINE/i,            // Contains .online
       /CLAIM/i,               // Claim airdrop scams
       /AIRDROP/i,             // Airdrop scams
       /REWARD/i,              // Reward scams
@@ -85,6 +91,15 @@ export class SymbolMapper {
       /SWAP FOR \$/i,         // Swap scams
       /LOOT-/i,               // Loot scams
       /GET-/i,                // Get scams
+      /REDEEM/i,              // Redeem scams
+      /VERIFY/i,              // Verify scams
+      /ELIGIBLE/i,            // Eligible scams
+      /T\.LY\//i,             // URL shorteners
+      /BIT\.LY/i,             // URL shorteners
+      /GETDROPS/i,            // GetDrops scam site
+      /THECHILIZ/i,           // TheChiliz scam
+      /GIFT TOKEN/i,          // Gift token scams
+      /BADGE/i,               // Badge scams
       /\u200B/,               // Zero-width characters
       /[\u0600-\u06FF]/,      // Arabic characters (uncommon in legit tokens)
       /[\u4E00-\u9FFF]/,      // Chinese characters (uncommon in legit tokens)

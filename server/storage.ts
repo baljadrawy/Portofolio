@@ -107,6 +107,8 @@ export class MemStorage implements IStorage {
       networkKey: insertConnection.networkKey ?? null,
       status: insertConnection.status || 'synced',
       lastSync: new Date(),
+      lastBlockScanned: null,
+      lastTokenScan: null,
       createdAt: new Date(),
     };
     this.connections.set(id, connection);

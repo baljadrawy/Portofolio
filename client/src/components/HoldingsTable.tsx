@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowUpDown, TrendingUp, TrendingDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowUpDown, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Wallet, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export interface Holding {
   id: string;
@@ -19,6 +20,8 @@ export interface Holding {
   profitLoss: number;
   profitLossPercent: number;
   chainName?: string;
+  connectionName?: string;
+  connectionType?: string;
 }
 
 interface HoldingsTableProps {
@@ -33,8 +36,28 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('value');
   const [sortDesc, setSortDesc] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedConnection, setSelectedConnection] = useState<string>('all');
 
-  const sortedHoldings = [...holdings].sort((a, b) => {
+  // Get unique connections for filter
+  const uniqueConnections = useMemo(() => {
+    const connections = new Set<string>();
+    holdings.forEach(h => {
+      if (h.connectionName) {
+        connections.add(h.connectionName);
+      }
+    });
+    return Array.from(connections).sort();
+  }, [holdings]);
+
+  // Filter holdings by selected connection
+  const filteredHoldings = useMemo(() => {
+    if (selectedConnection === 'all') {
+      return holdings;
+    }
+    return holdings.filter(h => h.connectionName === selectedConnection);
+  }, [holdings, selectedConnection]);
+
+  const sortedHoldings = [...filteredHoldings].sort((a, b) => {
     const multiplier = sortDesc ? -1 : 1;
     return multiplier * (a[sortKey] > b[sortKey] ? 1 : -1);
   });
@@ -54,6 +77,19 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
     setCurrentPage(1);
   };
 
+  const handleConnectionChange = (value: string) => {
+    setSelectedConnection(value);
+    setCurrentPage(1);
+  };
+
+  // Auto-reset filter to "all" when selected connection has no holdings
+  useEffect(() => {
+    if (selectedConnection !== 'all' && filteredHoldings.length === 0 && holdings.length > 0) {
+      setSelectedConnection('all');
+      setCurrentPage(1);
+    }
+  }, [selectedConnection, filteredHoldings.length, holdings.length]);
+
   const handlePreviousPage = () => {
     setCurrentPage(prev => Math.max(1, prev - 1));
   };
@@ -66,7 +102,29 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
     <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold">Holdings</h3>
-        <div className="text-sm text-muted-foreground">{holdings.length} assets</div>
+        <div className="flex items-center gap-3">
+          {uniqueConnections.length > 1 && (
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Select value={selectedConnection} onValueChange={handleConnectionChange}>
+                <SelectTrigger className="w-[200px]" data-testid="select-connection-filter">
+                  <SelectValue placeholder="All Wallets" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" data-testid="option-all-connections">All Wallets</SelectItem>
+                  {uniqueConnections.map((connection) => (
+                    <SelectItem key={connection} value={connection} data-testid={`option-connection-${connection}`}>
+                      {connection}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div className="text-sm text-muted-foreground" data-testid="text-assets-count">
+            {filteredHoldings.length} {filteredHoldings.length === holdings.length ? 'assets' : `of ${holdings.length} assets`}
+          </div>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <div className="max-h-[600px] overflow-y-auto">
@@ -127,50 +185,66 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedHoldings.map((holding) => (
-                <TableRow key={holding.id} data-testid={`row-holding-${holding.id}`}>
-                  <TableCell>
-                    <div>
-                      <div className="font-semibold">
-                        {holding.symbol}
-                        {holding.chainName && (
-                          <span className="text-xs text-muted-foreground ml-2">({holding.chainName})</span>
+              {paginatedHoldings.length > 0 ? (
+                paginatedHoldings.map((holding) => (
+                  <TableRow key={holding.id} data-testid={`row-holding-${holding.id}`}>
+                    <TableCell>
+                      <div>
+                        <div className="font-semibold">
+                          {holding.symbol}
+                          {holding.chainName && (
+                            <span className="text-xs text-muted-foreground ml-2">({holding.chainName})</span>
+                          )}
+                        </div>
+                        <div className="text-sm text-muted-foreground">{holding.name}</div>
+                        {holding.connectionName && (
+                          <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1" data-testid={`text-connection-${holding.id}`}>
+                            <Wallet className="h-3 w-3" />
+                            {holding.connectionName}
+                          </div>
                         )}
                       </div>
-                      <div className="text-sm text-muted-foreground">{holding.name}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right font-mono">{holding.amount.toFixed(8)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="font-mono">${holding.avgCost.toLocaleString()}</div>
-                  </TableCell>
-                  <TableCell className="text-right font-mono">
-                    ${holding.currentPrice >= 1 
-                      ? holding.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                      : holding.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })
-                    }
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className={`flex items-center justify-end gap-1 ${holding.change24h >= 0 ? 'text-success' : 'text-destructive'}`}>
-                      {holding.change24h >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                      <span className="font-semibold">{holding.change24h >= 0 ? '+' : ''}{holding.change24h.toFixed(2)}%</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right font-mono font-semibold">
-                    ${holding.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex flex-col items-end">
-                      <div className={`font-semibold font-mono ${holding.profitLoss >= 0 ? 'text-success' : 'text-destructive'}`}>
-                        {holding.profitLoss >= 0 ? '+' : ''}${Math.abs(holding.profitLoss).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right font-mono">{holding.amount.toFixed(8)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="font-mono">${holding.avgCost.toLocaleString()}</div>
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      ${holding.currentPrice >= 1 
+                        ? holding.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                        : holding.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })
+                      }
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className={`flex items-center justify-end gap-1 ${holding.change24h >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        {holding.change24h >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                        <span className="font-semibold">{holding.change24h >= 0 ? '+' : ''}{holding.change24h.toFixed(2)}%</span>
                       </div>
-                      <Badge variant={holding.profitLoss >= 0 ? 'default' : 'destructive'} className="mt-1">
-                        {holding.profitLoss >= 0 ? '+' : ''}{holding.profitLossPercent.toFixed(2)}%
-                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-mono font-semibold">
+                      ${holding.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex flex-col items-end">
+                        <div className={`font-semibold font-mono ${holding.profitLoss >= 0 ? 'text-success' : 'text-destructive'}`}>
+                          {holding.profitLoss >= 0 ? '+' : ''}${Math.abs(holding.profitLoss).toLocaleString()}
+                        </div>
+                        <Badge variant={holding.profitLoss >= 0 ? 'default' : 'destructive'} className="mt-1">
+                          {holding.profitLoss >= 0 ? '+' : ''}{holding.profitLossPercent.toFixed(2)}%
+                        </Badge>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-24 text-center">
+                    <div className="text-muted-foreground" data-testid="text-no-filtered-holdings">
+                      No holdings found for this wallet. Select "All Wallets" to see all holdings.
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </div>

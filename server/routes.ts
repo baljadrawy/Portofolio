@@ -347,7 +347,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/holdings", async (_req, res) => {
     try {
       const holdings = await storage.getAllHoldings();
-      res.json(holdings);
+      const connections = await storage.getAllConnections();
+      
+      // Enrich holdings with connection information
+      const enrichedHoldings = holdings.map(holding => {
+        const connection = connections.find(c => c.id === holding.connectionId);
+        return {
+          ...holding,
+          connectionName: connection?.name,
+          connectionType: connection?.type,
+          chainName: connection?.chainId ? CHAIN_NAMES[connection.chainId] : 
+                     (connection?.networkKey ? NON_EVM_NETWORK_NAMES[connection.networkKey] : undefined),
+        };
+      });
+      
+      res.json(enrichedHoldings);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch holdings" });
     }

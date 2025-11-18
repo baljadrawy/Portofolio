@@ -1,4 +1,10 @@
 export class SymbolMapper {
+  // Known scam token patterns (symbol + name combinations)
+  private static scamTokens = new Set([
+    'GME', // GameStop meme token scams
+    'COC', // CorgiCash and similar scam airdrops
+  ]);
+
   private static symbolMap: Map<string, string> = new Map([
     // Wrapped tokens - map to native tokens
     ['WETH', 'ETH'],
@@ -49,6 +55,11 @@ export class SymbolMapper {
     if (!symbol || symbol.length === 0) return false;
     
     const normalized = symbol.trim().toUpperCase();
+    
+    // Check against known scam tokens
+    if (this.scamTokens.has(normalized)) {
+      return false;
+    }
     
     // Filter out obvious scam/spam tokens by symbol
     const scamPatterns = [

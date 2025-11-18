@@ -28,9 +28,14 @@ export function registerPriceRoutes(app: Express) {
       
       for (const holding of holdings) {
         const originalSymbol = holding.symbol;
+        const amount = typeof holding.amount === 'string' ? parseFloat(holding.amount) : holding.amount;
+        
+        // Filter suspicious tokens by abnormal amounts
+        const isSuspiciousAmount = amount > 1_000_000_000; // 1 billion+ tokens is extremely suspicious
+        
         const cleanedSymbol = SymbolMapper.cleanAndMapSymbol(originalSymbol, holding.name);
         
-        if (!cleanedSymbol) {
+        if (!cleanedSymbol || isSuspiciousAmount) {
           scamTokens.push(originalSymbol);
           continue;
         }

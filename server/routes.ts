@@ -93,7 +93,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await storage.deleteHoldingsByConnection(connection.id);
             console.log(`[Scan] Cleared old holdings for ${chainName}`);
           } else {
-            const walletName = customName ? `${customName} - ${chainName}` : `Wallet - ${chainName}`;
+            const walletName = customName || `Wallet - ${chainName}`;
             connection = await storage.createConnection({
               name: walletName,
               type: 'wallet',
@@ -316,7 +316,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const walletName = name ? `${name} - Solana` : 'Wallet - Solana';
+      const walletName = name || 'Wallet - Solana';
       const connection = await storage.createConnection({
         name: walletName,
         type: 'wallet',

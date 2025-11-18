@@ -66,7 +66,10 @@ export default function Settings() {
         });
 
         try {
-          const response: any = await apiRequest('POST', '/api/wallet/scan-all-networks', { address });
+          const response: any = await apiRequest('POST', '/api/wallet/scan-all-networks', { 
+            address,
+            name: data.name?.trim() || undefined
+          });
 
           await queryClient.invalidateQueries({ queryKey: ['/api/connections'] });
           await queryClient.invalidateQueries({ queryKey: ['/api/portfolio/summary'] });

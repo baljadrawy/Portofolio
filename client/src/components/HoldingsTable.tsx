@@ -107,7 +107,7 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <Select value={selectedConnection} onValueChange={handleConnectionChange}>
-                <SelectTrigger className="w-[200px]" data-testid="select-connection-filter">
+                <SelectTrigger className="w-[200px]" data-testid="select-wallet-filter">
                   <SelectValue placeholder="All Wallets" />
                 </SelectTrigger>
                 <SelectContent>

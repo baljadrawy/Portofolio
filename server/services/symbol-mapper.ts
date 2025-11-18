@@ -79,10 +79,18 @@ export class SymbolMapper {
       /\.ORG/i,               // Contains .org
       /\.INFO/i,              // Contains .info
       /\.ONLINE/i,            // Contains .online
+      /\.FI/i,                // Contains .fi (SimpSwap scams)
       /CLAIM/i,               // Claim airdrop scams
       /AIRDROP/i,             // Airdrop scams
       /REWARD/i,              // Reward scams
       /VISIT/i,               // Visit website scams
+      /SWAP.*COM/i,           // Swap scams with .com variants
+      /SWAP.*ORG/i,           // Swap scams with .org variants
+      /SWAP.*XYZ/i,           // Swap scams with .xyz variants
+      /SWAP.*FI/i,            // Swap scams with .fi variants
+      /SHIBSWAP/i,            // ShibSwap scams
+      /SIMPSWAP/i,            // SimpSwap scams
+      /UNISWAP.*CLAIM/i,      // Uniswap claim scams
       /ADS:/i,                // Advertisement tokens
       /\$USDT.*CLAIM/i,       // USDT claim scams
       /&GT;/i,                // HTML entities
@@ -103,6 +111,8 @@ export class SymbolMapper {
       /\u200B/,               // Zero-width characters
       /[\u0600-\u06FF]/,      // Arabic characters (uncommon in legit tokens)
       /[\u4E00-\u9FFF]/,      // Chinese characters (uncommon in legit tokens)
+      /[\u02B0-\u036F]/,      // Modifier letters and combining diacritics (used to obfuscate)
+      /[\u2000-\u206F]/,      // General punctuation (including special spaces)
     ];
     
     for (const pattern of scamPatterns) {

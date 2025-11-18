@@ -8,9 +8,16 @@ A comprehensive cryptocurrency portfolio tracking application that aggregates ho
 
 Preferred communication style: Simple, everyday language.
 
-## Recent Updates (November 17, 2025)
+## Recent Updates
 
-### Price System Improvements
+### November 18, 2025 - Scam Token Filtering & Holdings Filter
+- **Comprehensive Scam Token Filtering**: Enhanced `SymbolMapper` with extensive pattern matching to filter scam/spam tokens before displaying to users. Filters URL patterns (.com, .io, .net, .org, .fi, etc.), swap scams (SHIBSWAP, SIMPSWAP, SWAP.*variants), suspicious keywords (CLAIM, AIRDROP, VERIFY, REWARD), and Unicode obfuscation characters. Reduces displayed holdings from 329 to ~138 legitimate assets.
+- **Backend Filtering Integration**: Applied scam filtering to both `/api/holdings` and `/api/portfolio/summary` endpoints using `SymbolMapper.isValidSymbol()` to ensure clean data at the API level.
+- **Holdings Wallet Filter**: Added dropdown filter in Holdings table to filter assets by wallet/exchange source. Filter only appears when multiple (2+) wallet connections exist, showing "All Wallets" plus individual wallet names.
+- **Auto-Reset Filter Logic**: Implemented automatic filter reset to "All Wallets" when selected wallet has no holdings, preventing empty state confusion.
+- **Connection Data Enrichment**: Both API endpoints now enrich holdings with `connectionName`, `connectionType`, and `chainName` for complete wallet source visibility.
+
+### November 17, 2025 - Price System Improvements
 - **Fixed Polygon (MATIC) Price Fetching**: Updated symbol mapping to reflect Polygon's rebrand from MATIC to POL in CoinMarketCap. Both MATIC and WMATIC now correctly map to POL for price lookups.
 - **Enhanced Price Validation**: Added strict validation to ensure only positive prices (> 0) are stored in database, preventing null/zero price updates.
 - **Improved Update Efficiency**: Optimized price update flow to skip invalid price data early in the process, reducing unnecessary database operations.

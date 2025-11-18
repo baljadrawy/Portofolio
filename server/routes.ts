@@ -7,6 +7,7 @@ import { solscanService } from "./services/solscan";
 import { binanceService } from "./services/binance";
 import { SUPPORTED_CHAINS, NATIVE_TOKENS, CHAIN_NAMES, NON_EVM_NETWORKS, NON_EVM_NETWORK_NAMES, NON_EVM_NATIVE_TOKENS } from "@shared/networks";
 import { registerPriceRoutes } from "./routes/prices";
+import { SymbolMapper } from "./services/symbol-mapper";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   registerPriceRoutes(app);
@@ -349,8 +350,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const holdings = await storage.getAllHoldings();
       const connections = await storage.getAllConnections();
       
+      // Filter out scam/spam tokens before enriching
+      const legitimateHoldings = holdings.filter(holding => 
+        SymbolMapper.isValidSymbol(holding.symbol, holding.name)
+      );
+      
       // Enrich holdings with connection information
-      const enrichedHoldings = holdings.map(holding => {
+      const enrichedHoldings = legitimateHoldings.map(holding => {
         const connection = connections.find(c => c.id === holding.connectionId);
         return {
           ...holding,
@@ -681,9 +687,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Portfolio summary endpoint
   app.get("/api/portfolio/summary", async (_req, res) => {
     try {
-      const holdings = await storage.getAllHoldings();
+      const allHoldings = await storage.getAllHoldings();
       const connections = await storage.getAllConnections();
       const transactions = await storage.getAllTransactions();
+      
+      // Filter out scam/spam tokens
+      const holdings = allHoldings.filter(holding => 
+        SymbolMapper.isValidSymbol(holding.symbol, holding.name)
+      );
 
       // Get unique symbols
       const symbols = Array.from(new Set(holdings.map(h => h.symbol.toLowerCase())));
@@ -767,9 +778,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalValueYesterday += valueYesterday;
         totalCost += cost;
 
-        // Get network name from connection
+        // Get connection information
         const connection = connections.find(c => c.id === holding.connectionId);
-        const chainName = connection?.chainId ? CHAIN_NAMES[connection.chainId] : undefined;
+        const chainName = connection?.chainId ? CHAIN_NAMES[connection.chainId] : 
+                         (connection?.networkKey ? NON_EVM_NETWORK_NAMES[connection.networkKey] : undefined);
 
         return {
           ...holding,
@@ -782,6 +794,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           profitLoss: value - cost,
           profitLossPercent: cost > 0 ? ((value - cost) / cost) * 100 : 0,
           chainName,
+          connectionName: connection?.name,
+          connectionType: connection?.type,
         };
       });
 

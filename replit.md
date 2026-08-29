@@ -4,6 +4,18 @@
 
 A comprehensive cryptocurrency portfolio tracking application that aggregates holdings across multiple wallets and exchanges. The platform provides real-time portfolio valuation, performance analytics, transaction history, and multi-source asset management. It supports 19 EVM-compatible blockchain networks via Etherscan API v2 and Solana via Solscan API v2, enabling automatic wallet scanning. Key features include multi-network wallet scanning, custom wallet naming, wallet connection grouping by address, and a unified holdings view across all sources with real-time price updates and historical performance tracking. The application aims to provide data visualization and financial clarity through a sophisticated dashboard interface.
 
+## Architecture Documentation
+
+The architecture and roadmap for evolving this tracker into a **Portfolio
+Investment Intelligence Platform** live in [`docs/`](./docs/README.md).
+
+Start with [`docs/00-CURRENT-STATE-AUDIT.md`](./docs/00-CURRENT-STATE-AUDIT.md)
+for a verified description of what exists today, then
+[`docs/README.md`](./docs/README.md) for the full contract set and reading order.
+
+Those documents are the Source of Truth for future phases. This file continues to
+describe the tracker as built.
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.

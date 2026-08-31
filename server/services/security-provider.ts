@@ -29,14 +29,27 @@ export type SecurityObservationType =
   | "DEPLOYER_RISK"
   | "OWNERSHIP_PRIVILEGE"
   | "CONTRACT_VERIFIED"
+  // Added in Phase 2. Solana's freeze authority has no EVM equivalent and is a
+  // CORE check: a live freeze authority can render a holding untradeable.
+  | "FREEZE_AUTHORITY"
+  | "BUY_TAX"
+  | "SELL_TAX"
+  | "KNOWN_CRITICAL_EXPLOIT"
   | "TAX_PARAMETERS"
   | "CLONE_INDICATOR"
   | "PROVIDER_VERDICT";
 
 export interface SecurityObservation {
   type: SecurityObservationType;
-  /** Raw provider payload, kept verbatim for provenance. */
+  /** The FACT itself, kept verbatim. This is what gets hashed. */
   raw: unknown;
+  /**
+   * Volatile provenance — block number, slot, registry version. Deliberately
+   * OUTSIDE `raw` and therefore outside the hash: re-reading an unchanged
+   * chain state at a later block is the same fact, and hashing the block
+   * number would create a fresh row on every poll.
+   */
+  provenance?: string;
   /** Typed value where one exists (boolean flag, percentage, ...). */
   normalized?: unknown;
   unit?: string;
@@ -105,6 +118,7 @@ export function observationsToEvidence(
     normalizedValue: o.normalized,
     normalizedUnit: o.unit ?? null,
     normalizerVersion: "security-normalizer-v1",
+    reliabilityBasis: o.provenance ?? null,
   }));
 }
 

@@ -1,5 +1,12 @@
 # Portfolio Intelligence, Monitoring, and Scenarios
 
+> 🔴 **POST-LAUNCH (B4)** — with two exceptions.
+>
+> CORE keeps only what is trivial on top of per-asset results: **holdings ranked by
+> risk/action**, and **critical warnings across the portfolio**. Everything else here —
+> health score, concentration, correlation, exposure models, scenario analysis — is
+> deferred. **Portfolio optimisation is explicitly not a launch blocker.**
+>
 > **Status:** Architecture contract. Phases 7–8. Data model designed now,
 > implementation deferred.
 

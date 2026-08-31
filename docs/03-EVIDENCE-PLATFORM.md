@@ -1,5 +1,7 @@
 # Evidence Platform
 
+> 🟢 **CORE / PRE-LAUNCH** — required for the Core Launch Gate. Scope contract: [`CORE-LAUNCH-SCOPE.md`](./CORE-LAUNCH-SCOPE.md).
+>
 > **Status:** **FOUNDATION IMPLEMENTED (Phase 1, 2026-09-01).**
 >
 > Tables: `evidence_sources` · `evidence` · `evidence_snapshots` ·

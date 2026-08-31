@@ -9,8 +9,12 @@
 ## Gate status
 
 ```
-Completed    : Phase 0A · Phase 0B · Phase 1
-Next Gate    : PHASE 2 — EVIDENCE + SECURITY PLATFORM
+PART A — CORE / PRE-LAUNCH
+  Completed  : Phase 0A · Phase 0B · Phase 1
+  Next Gate  : PHASE 2 — CORE EVIDENCE + SECURITY
+  Remaining  : Phases 2, 3, 4, 5, 6  →  CORE LAUNCH GATE
+
+PART B — ENHANCEMENTS / POST-LAUNCH : deferred (B1..B8)
 ```
 
 
@@ -54,7 +58,8 @@ Platform** — a system that answers, continuously and with auditable evidence:
 | 11 | [Portfolio Intelligence](./11-PORTFOLIO-INTELLIGENCE.md) | Asset decision vs. portfolio action, monitoring |
 | 12 | [External References](./12-EXTERNAL-REFERENCES.md) | Palisade **(evaluated → REFERENCE_ONLY)**, VerumTrade, openportfolio, analystOS, Orbiter |
 | 13 | [Data Governance](./13-DATA-GOVERNANCE.md) | Source ToS/licensing status · privacy contract |
-| — | [Roadmap](./ROADMAP.md) | Phases 0A–9 with exit criteria and gate status |
+| — | **[Core Launch Scope](./CORE-LAUNCH-SCOPE.md)** | **Start here for scope.** CORE vs POST-LAUNCH · the Launch Gate |
+| — | [Roadmap](./ROADMAP.md) | PART A (core phases) · PART B (deferred) |
 | — | [Technical Debt](./TECHNICAL-DEBT.md) | **Living register.** Authoritative over doc 00 |
 | — | [ADRs](./adr/) | Decisions that require an ADR to change |
 
@@ -103,6 +108,17 @@ not check" is never rendered as "there is no problem".
 ```
 Canonical Asset Identity = BLOCKER BEFORE INVESTMENT INTELLIGENCE
 Canonical Asset Identity ≠ BLOCKER FOR CURRENT APPLICATION PRODUCTION DEPLOYMENT
+```
+
+### 7b. Scope creep is refused by contract
+
+```
+Any new feature that surfaces during CORE work and does not block the
+Core Launch Gate is recorded as POST-LAUNCH or technical debt.
+It is NOT implemented immediately.
+
+Exceptions: security vulnerability · data corruption risk · material
+wrong-decision risk · regulatory/ToS blocker · production blocker.
 ```
 
 ### 8. Security data enters the Evidence architecture

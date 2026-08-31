@@ -21,6 +21,25 @@ time horizons, and different failure modes.
 
 ---
 
+## 1b. What ships at launch
+
+The eighteen questions below define the **product**. They do not all have to be
+answered at full depth in the **first release**.
+
+Launch scope is governed by [`CORE-LAUNCH-SCOPE.md`](./CORE-LAUNCH-SCOPE.md):
+
+```
+CORE / PRE-LAUNCH      Phases 0A · 0B · 1 · 2 · 3 · 4 · 5 · 6
+ENHANCEMENTS           B1..B8, deferred
+```
+
+The North Star at launch is unchanged in substance:
+
+> Is my reason for holding this asset still valid — or has evidence appeared
+> that means I should keep holding, watch it, reduce it, or exit?
+
+---
+
 ## 2. The eighteen questions
 
 Every design decision traces back to enabling at least one of these:

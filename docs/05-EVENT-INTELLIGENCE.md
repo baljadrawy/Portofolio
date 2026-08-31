@@ -1,5 +1,9 @@
 # Event Intelligence Model
 
+> 🟡 **CORE (minimum) / POST-LAUNCH (full)** — Phase 2 builds only the event foundation
+> that security incidents actually require. The full Event Store, cross-category
+> correlation and event-driven monitoring are POST-LAUNCH (B1).
+>
 > **Status:** Architecture contract. Phase 2.
 >
 > Security incidents are events **and** evidence. They are stored here and in the

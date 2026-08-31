@@ -1,5 +1,10 @@
 # Security and Scam Engine
 
+> 🟢 **CORE / PRE-LAUNCH** (Phase 2) — but only the checks that prevent a dangerous HOLD.
+> Advanced security work (deployer graphs, wallet clustering, clone detection at scale,
+> continuous surveillance, large consensus engines) is **POST-LAUNCH B2**. Split table in
+> [`ROADMAP.md`](./ROADMAP.md) Phase 2.
+>
 > **Status:** **ABSTRACTION IMPLEMENTED (Phase 1, 2026-09-01).** Engine is Phase 2.
 >
 > `server/services/security-provider.ts` defines `SecurityProvider`,

@@ -1,5 +1,8 @@
 # Scoring Model and Decision Policy
 
+> 🟢 **CORE / PRE-LAUNCH** (Phase 4) — gate conditions 7 and 8. The three separate scores
+> and the deterministic guardrails are CORE. Confidence **calibration** models are POST-LAUNCH.
+>
 > **Status:** Architecture contract. Phase 4.
 
 ---

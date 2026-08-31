@@ -78,6 +78,23 @@ Phase 1 is read-only. No custody, no signing, no transaction execution.
 
 ---
 
+## Pre-launch requirement (narrowed)
+
+```
+Any source CORE actually uses AND whose data the system stores must have its
+terms known well enough for that specific use BEFORE launch.
+```
+
+This is deliberately narrower than reviewing every conceivable source. It is
+also non-negotiable: `UNKNOWN` may not remain open past launch for a source we
+are actively caching, where the storage itself could breach its terms.
+
+Sources not used by CORE may stay `UNKNOWN` indefinitely.
+
+Classification: **TD-24 = PRE-LAUNCH BLOCKER (narrowed)**.
+
+---
+
 ## Follow-up
 
 | # | Action |

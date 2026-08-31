@@ -1,5 +1,8 @@
 # Thesis Memory and Thesis Breakers
 
+> 🟢 **CORE / PRE-LAUNCH** (Phase 4) — gate conditions 5 and 6. Thesis and Thesis Breakers
+> both ship at launch. A falling price alone may never trigger EXIT.
+>
 > **Status:** Architecture contract. Phase 5.
 
 ---

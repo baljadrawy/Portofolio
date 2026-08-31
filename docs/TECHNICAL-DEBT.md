@@ -5,7 +5,7 @@
 > `00-CURRENT-STATE-AUDIT.md` is a **historical snapshot** taken at commit
 > `2521133`. When the two disagree, **this file is current**.
 
-**Last updated:** 2026-09-01 (Phase 1 execution)
+**Last updated:** 2026-09-01 (Core / Enhancements reorganisation)
 
 ---
 
@@ -15,6 +15,57 @@
 - Update `Status` when it changes; do not delete resolved entries
 - `Blocker: YES` means a phase cannot reach PASS until it is resolved
 - Every entry must state *why* it is or is not a blocker
+
+### Launch classification
+
+Every open item carries one of:
+
+| Class | Meaning |
+|---|---|
+| `PRE-LAUNCH BLOCKER` | The Core Launch Gate cannot be met while this is open |
+| `PRE-LAUNCH NON-BLOCKER` | Should be addressed before launch; does not block the gate |
+| `POST-LAUNCH` | Deferred. Does not affect launch safety or usefulness |
+
+Classification is **not** inherited from severity. A HIGH-severity item can be
+POST-LAUNCH if it does not touch the twelve gate conditions.
+Contract: [`CORE-LAUNCH-SCOPE.md`](./CORE-LAUNCH-SCOPE.md).
+
+---
+
+## Launch classification table
+
+| ID | Item | Class | Rationale |
+|---|---|---|---|
+| TD-01 | package name `rest-express` | `POST-LAUNCH` | Cosmetic. No gate condition touches it. |
+| TD-02 | legacy `users` password field | `POST-LAUNCH` | Table is unused and unreferenced; no auth path runs through it. Still unverified, still not a launch risk. |
+| TD-04 | no versioned migrations | `POST-LAUNCH` | Reclassified. Phases 0B and 1 both shipped reviewed, guarded, additive SQL — the discipline exists without the framework. |
+| TD-08 | Replit build plugins | `POST-LAUNCH` | Guarded by `NODE_ENV`/`REPL_ID`; production builds unaffected. |
+| TD-09 | test coverage | `PRE-LAUNCH NON-BLOCKER` | 50 tests exist. Phase 4 guardrails and Phase 6 UAT will demand more, but the gate is verified by Phase 6, not by a coverage number. |
+| TD-10 | orphaned volume | `POST-LAUNCH` | Server hygiene, unrelated to this repository. |
+| TD-15 | pre-existing TypeScript errors | `POST-LAUNCH` | Two errors in files no CORE phase touches. Build uses esbuild and does not typecheck. |
+| TD-16 | PUBLIC CONNECT default | `POST-LAUNCH` | Measured: connect-only, zero data access. PostgreSQL default, not a grant we made. Revoking risks other projects. |
+| TD-17 | no migration/runtime role split | `POST-LAUNCH` | Single-operator server. Ideal, not required for safe launch. |
+| TD-19 | historical identity recovery | `POST-LAUNCH` | Current impact zero — no pre-0B holdings exist. Re-scan resolves. |
+| TD-20 | manual identity admin UI | `POST-LAUNCH` | Precedence is enforced in code; setting an override via SQL is acceptable for a single operator. |
+| TD-21 | `economic_group` unpopulated | `POST-LAUNCH` | Feeds portfolio concentration, which is B4. |
+| TD-22 | snapshot cleanup needs trigger disable | `POST-LAUNCH` | Absolute immutability is the intended behaviour. |
+| TD-23 | evidence retention undefined | `PRE-LAUNCH NON-BLOCKER` | **Narrowed.** A *stated* minimum policy is required before launch if evidence is stored in production. Automated lifecycle management is POST-LAUNCH. |
+| TD-24 | third-party source terms unknown | **`PRE-LAUNCH BLOCKER`** | **Narrowed.** Only for sources CORE actually uses *and stores data from*. Storing data in breach of terms is a real legal exposure, not a tidiness issue. Sources not used by CORE stay open. |
+| TD-25 | `raw_value` inline text | `POST-LAUNCH` | Deliberate: keeps hash determinism under application control. |
+| TD-26 | no live SecurityProvider | **`PRE-LAUNCH BLOCKER`** | Gate condition 3. Without it the system can recommend HOLD on a honeypot — the worst failure this product can produce. |
+
+### Summary
+
+```
+PRE-LAUNCH BLOCKER      : 2   (TD-24 narrowed, TD-26)
+PRE-LAUNCH NON-BLOCKER  : 2   (TD-09, TD-23 narrowed)
+POST-LAUNCH             : 13
+RESOLVED                : 9
+```
+
+**Only two items genuinely block launch.**
+
+---
 
 ### Severity scale
 

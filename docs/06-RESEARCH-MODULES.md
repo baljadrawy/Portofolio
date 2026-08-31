@@ -1,5 +1,9 @@
 # Research Modules
 
+> 🟡 **CORE (12 modules) / POST-LAUNCH (depth)** — Phase 3 ships only modules that can
+> materially change the ownership thesis. Deep RAG, vector search, document ingestion,
+> advanced GitHub analytics and sentiment intelligence are POST-LAUNCH (B3).
+>
 > **Status:** Architecture contract. Phase 3.
 > **Design rule:** modular analysts, **never** one giant prompt.
 

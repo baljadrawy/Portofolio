@@ -1,5 +1,10 @@
 # AI Provider Abstraction and Structured Output
 
+> 🟡 **CORE (minimum) / POST-LAUNCH (advanced)** — pre-launch needs only the minimum
+> provider abstraction and structured, validated output. Multi-provider routing, fallback
+> chains and cost-based model selection are POST-LAUNCH unless an operational reason forces
+> them earlier. The rule `Evidence → AI interpretation` is unconditional.
+>
 > **Status:** Architecture contract. Phase 4.
 
 ---

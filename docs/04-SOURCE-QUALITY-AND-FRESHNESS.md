@@ -65,6 +65,30 @@ never leak into factual reasoning.
 
 ---
 
+## 1b. Tier ceilings are PROPOSED, not architectural  *(clarified in Phase 2)*
+
+```
+Source Tier  ≠  Evidence Confidence
+```
+
+The ceilings below are **tunable defaults**, not a permanent architectural
+commitment. Nothing in the schema hard-codes "tier 2 ≤ 85 forever".
+
+Usable confidence will ultimately combine independent axes:
+
+```
+Source Authority · Evidence Reliability · Freshness ·
+Verification Strength · Corroboration · Conflict State
+        ↓
+   Usable Confidence   (Phase 4 — not built)
+```
+
+Phase 2 already relies on that separation: a Tier-1 deterministic chain read
+and a Tier-2 provider opinion are combined by *verification strength*
+(`deterministic` vs `corroboration >= 2`), not by tier arithmetic.
+
+---
+
 ## 2. Tier → confidence ceiling
 
 | Tier | Max confidence from this source alone |

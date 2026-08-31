@@ -1,5 +1,11 @@
 # Security and Scam Engine
 
+> ✅ **IMPLEMENTED (Phase 2, 2026-09-01).** Live providers: `direct-chain`
+> (deterministic RPC) · `goplus` (corroborating) · `internal-rules` (curated
+> incidents). Disposition: `CLEAR / CAUTION / CRITICAL / INSUFFICIENT_EVIDENCE`
+> — deliberately NOT an investment decision. Policy `security-policy-v1`.
+> Rules: `shared/security-rules.ts`. Adapters: `server/services/security/`.
+>
 > 🟢 **CORE / PRE-LAUNCH** (Phase 2) — but only the checks that prevent a dangerous HOLD.
 > Advanced security work (deployer graphs, wallet clustering, clone detection at scale,
 > continuous surveillance, large consensus engines) is **POST-LAUNCH B2**. Split table in

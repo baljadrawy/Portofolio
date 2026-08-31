@@ -12,8 +12,8 @@ PART A — CORE / PRE-LAUNCH
   Phase 0A Production Baseline .......... PASS
   Phase 0B Canonical Asset Identity ..... PASS
   Phase 1  Intelligence Foundations ..... PASS
-  Phase 2  Core Evidence + Security ..... NEXT
-  Phase 3  Core Research ................ pending
+  Phase 2  Core Evidence + Security ..... PASS
+  Phase 3  Core Research ................ NEXT
   Phase 4  Investment Thesis + Decision . pending
   Phase 5  MVP Product Integration ...... pending
   Phase 6  Pre-Launch Validation / UAT .. pending
@@ -256,7 +256,7 @@ Nothing here produces a decision, a score, or an AI call.
 
 ---
 
-## Phase 2 — Core Evidence + Security  ·  `CORE` · **NEXT**
+## Phase 2 — Core Evidence + Security  ·  `CORE` · **PASS**
 
 **Goal:** make evidence genuinely usable, and detect the security risks that
 would make a HOLD recommendation dangerous.
@@ -319,6 +319,25 @@ direct provider A + direct provider B + on-chain verification
 evidence · security findings are queryable as evidence · a provider failure
 reduces coverage and never implies safety · false-positive rate measured on a
 known-good sample · at least one live provider in production.
+
+### Implementation outcome (2026-09-01)
+
+`PASS`. Three live providers, no vendor name in the schema:
+
+| Provider | Role | Tier |
+|---|---|---|
+| `direct-chain` | deterministic RPC — contract code, proxy slots, ownership, Solana mint/freeze authority | 1 |
+| `goplus` | corroborating — honeypot, taxes, blacklist, mintable | 2 |
+| `internal-rules` | curated incident registry | 2 |
+
+Disposition `CLEAR / CAUTION / CRITICAL / INSUFFICIENT_EVIDENCE` under policy
+`security-policy-v1`. **No investment decision vocabulary at this layer.**
+
+Live-verified behaviour: WSOL → `CLEAR` · Solana USDC → `CAUTION` (live mint and
+freeze authorities) · unsupported chain → `INSUFFICIENT_EVIDENCE`, never CLEAR.
+
+**No migration was required** — evidence lands in the Phase 1 tables.
+88 tests passing.
 
 ---
 

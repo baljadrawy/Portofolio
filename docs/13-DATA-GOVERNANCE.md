@@ -16,6 +16,61 @@ false assurance.
 
 ---
 
+## Live CORE security sources — verified 2026-09-01
+
+These are the sources Phase 2 actually uses and stores evidence from. Under the
+narrowed TD-24 rule, these are the ones that had to be resolved before launch.
+
+### `direct-chain` — public blockchain RPC
+
+| Field | Value |
+|---|---|
+| **Purpose** | deterministic contract/mint state |
+| **Endpoints** | `*.publicnode.com` (EVM) · `api.mainnet-beta.solana.com` (Solana) |
+| **Tier** | 1 — chain state read directly, not via an indexer's opinion |
+| **API key** | none |
+| **Commercial use** | **Unrestricted.** Public blockchain state is not a proprietary dataset. What we store is what the chain says. |
+| **Caching / retention / redistribution** | **Unrestricted** for the same reason |
+| **Attribution** | none required |
+| **Cost** | free · public endpoints · no contract or quota |
+| **Verified** | 2026-09-01 |
+| **Note** | Public endpoints are best-effort. Rate limiting or downtime is treated as a provider failure, never as safety. |
+
+### `goplus` — GoPlus Token Security API
+
+| Field | Value |
+|---|---|
+| **Purpose** | honeypot, sell restriction, taxes, blacklist, mintable, holder count |
+| **Endpoint** | `api.gopluslabs.io/api/v1/token_security` |
+| **Tier** | 2 |
+| **API key** | not required for the free tier |
+| **Rate limit** | **30 requests/minute** (documented free tier) |
+| **Commercial use** | 🔴 **RESTRICTED.** §6: *"You shall not directly use our original data to conduct any commercial activities and generate revenue without Goplus's explicit written permission."* Present use is personal/non-commercial, which is permitted. **Written permission is required before any commercial launch.** |
+| **Attribution** | 🔴 **MANDATORY.** §3 requires a backlink or a *"Powered by Go+ Security"* mention; §5 requires displaying the GoPlus mark. Encoded as `GOPLUS_ATTRIBUTION` and returned in every assessment report. |
+| **Caching** | ⚠️ `UNKNOWN` — the agreement contains no caching clause either permitting or prohibiting it |
+| **Retention** | ⚠️ `UNKNOWN` — no clause |
+| **Redistribution** | 🔴 Restricted. §6 prohibits data mining and collection without permission |
+| **Cost** | free tier |
+| **Verified** | 2026-09-01, against the published API License Agreement |
+
+> **Why GoPlus is not the sole source.** Its commercial-use restriction and the
+> unknown caching status make it unsuitable as a single point of dependency.
+> It is therefore a **corroborating** provider: every capability it covers that
+> can be established from chain state is also checked deterministically, and no
+> CRITICAL disposition can rest on GoPlus alone.
+
+### `internal-rules` — curated incident registry
+
+| Field | Value |
+|---|---|
+| **Purpose** | known critical exploits |
+| **Source** | maintained in-repo, currently **empty** |
+| **Tier** | 2 |
+| **All legal fields** | not applicable — our own data |
+| **Limitation** | absence is not proof of absence. Recorded as **TD-27**. |
+
+---
+
 ## Register
 
 ### Sources already used by the running application

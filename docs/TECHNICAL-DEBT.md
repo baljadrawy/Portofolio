@@ -5,7 +5,7 @@
 > `00-CURRENT-STATE-AUDIT.md` is a **historical snapshot** taken at commit
 > `2521133`. When the two disagree, **this file is current**.
 
-**Last updated:** 2026-09-01 (Core / Enhancements reorganisation)
+**Last updated:** 2026-09-01 (Phase 2 execution)
 
 ---
 
@@ -57,13 +57,14 @@ Contract: [`CORE-LAUNCH-SCOPE.md`](./CORE-LAUNCH-SCOPE.md).
 ### Summary
 
 ```
-PRE-LAUNCH BLOCKER      : 2   (TD-24 narrowed, TD-26)
-PRE-LAUNCH NON-BLOCKER  : 2   (TD-09, TD-23 narrowed)
-POST-LAUNCH             : 13
-RESOLVED                : 9
+PRE-LAUNCH BLOCKER      : 1   (TD-24 — partially closed; security sources done,
+                               market sources remain, they become CORE in Phase 3)
+PRE-LAUNCH NON-BLOCKER  : 6   (TD-09, TD-23, TD-27, TD-28, TD-29, TD-31)
+POST-LAUNCH             : 14
+RESOLVED                : 10  (TD-26 closed in Phase 2)
 ```
 
-**Only two items genuinely block launch.**
+**One item still blocks launch, and only partially.**
 
 ---
 
@@ -519,6 +520,76 @@ table is genuinely unreferenced and removing it.
 | **Rationale** | Deliberate: Phase 1's scope is the contract, and Palisade was evaluated to `REFERENCE_ONLY`. Phase 2 must implement a real provider — most likely direct GoPlus/Blockscout integration rather than a wrapper. |
 | **Target phase** | Phase 2 |
 | **Status** | OPEN — by design |
+
+---
+
+### TD-27 — Incident registry is manually curated and empty
+
+| Field | Value |
+|---|---|
+| **Title** | `KNOWN_CRITICAL_EXPLOIT` is answered from a hand-maintained, currently empty registry |
+| **Discovered** | 2026-09-01 · Phase 2 |
+| **Severity** | MEDIUM |
+| **Class** | `PRE-LAUNCH NON-BLOCKER` |
+| **Rationale** | A "no incident" result means *not present in our registry*, not *no incident exists*. The mechanism, versioning and Event-Fact-vs-Assessment semantics are all correct; only the content is missing. The caveat is emitted in the observation payload so a CLEAR is never read as stronger than it is. Without this adapter no asset could reach CLEAR at all, since a CORE capability would have no source. |
+| **Target phase** | Phase 3 or a curated advisory feed |
+| **Status** | OPEN |
+
+---
+
+### TD-28 — GoPlus commercial use requires written permission
+
+| Field | Value |
+|---|---|
+| **Title** | GoPlus licence restricts commercial use of its data |
+| **Discovered** | 2026-09-01 · Phase 2 |
+| **Severity** | HIGH |
+| **Class** | `PRE-LAUNCH NON-BLOCKER` *(becomes a BLOCKER on any commercial launch)* |
+| **Rationale** | §6: *"You shall not directly use our original data to conduct any commercial activities and generate revenue without Goplus's explicit written permission."* Present use is personal and therefore permitted. Attribution is already enforced in code. The system is designed so GoPlus can be dropped without losing deterministic coverage. |
+| **Action if commercialising** | obtain written permission, or drop GoPlus and replace its corroborating role |
+| **Status** | OPEN |
+
+---
+
+### TD-29 — GoPlus caching and retention terms unstated
+
+| Field | Value |
+|---|---|
+| **Title** | The GoPlus agreement neither permits nor prohibits caching or retention |
+| **Discovered** | 2026-09-01 · Phase 2 |
+| **Severity** | MEDIUM |
+| **Class** | `PRE-LAUNCH NON-BLOCKER` |
+| **Rationale** | Absence of a clause is not permission. Recorded honestly as `UNKNOWN` rather than assumed. Exposure is limited: GoPlus evidence is corroborating, is never the sole basis of a CRITICAL, and could be purged without losing deterministic coverage. |
+| **Target phase** | clarify with GoPlus before commercial launch |
+| **Status** | OPEN |
+
+---
+
+### TD-30 — Public RPC endpoints have no availability guarantee
+
+| Field | Value |
+|---|---|
+| **Title** | `direct-chain` depends on free public RPC endpoints |
+| **Discovered** | 2026-09-01 · Phase 2 |
+| **Severity** | MEDIUM |
+| **Class** | `POST-LAUNCH` |
+| **Rationale** | Best-effort endpoints may rate-limit or go down. Handled safely — a failure yields zero observations, reduces coverage, and can never produce CLEAR. Two of the four endpoints tested during evaluation were already unusable (`rpc.ankr.com` requires a key, `cloudflare-eth.com` errored), which is why the working set is pinned. |
+| **Mitigation** | add fallback endpoints or a paid provider if reliability becomes a problem |
+| **Status** | OPEN |
+
+---
+
+### TD-31 — EVM chain coverage is 8 of 19
+
+| Field | Value |
+|---|---|
+| **Title** | `direct-chain` configures 8 EVM chains; the tracker supports 19 |
+| **Discovered** | 2026-09-01 · Phase 2 |
+| **Severity** | MEDIUM |
+| **Class** | `PRE-LAUNCH NON-BLOCKER` |
+| **Rationale** | Uncovered chains return `INSUFFICIENT_EVIDENCE`, never a false CLEAR — the fail-safe is correct and verified by test. Extending coverage is configuration, not architecture: one RPC URL per chain. |
+| **Target phase** | Phase 3 or as holdings demand |
+| **Status** | OPEN |
 
 ---
 

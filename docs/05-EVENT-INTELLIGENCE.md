@@ -138,6 +138,26 @@ security failure of the token itself.
 
 ---
 
+## 5b. Event Fact ≠ Current Assessment  *(clarified in Phase 2)*
+
+```
+HISTORICAL EVENT FACT     ≠     CURRENT ASSESSMENT
+```
+
+An exploit that occurred on 2026-01-01 is a permanent historical fact. Whether
+the protocol is *currently* impaired is a separate, changing judgement.
+
+Freshness applies to the **assessment**, never to the fact. A two-year-old
+exploit does not become untrue because the evidence is stale — it becomes
+*less relevant to the present*, which is a different statement.
+
+**Implemented in Phase 2:** `CuratedIncident.unresolved` separates the two. A
+resolved historical incident is recorded in the evidence payload but its
+normalized value is `false` — it asserts no present risk. Only an unresolved
+critical incident asserts current danger. Covered by test.
+
+---
+
 ## 6. Event lifecycle
 
 ```

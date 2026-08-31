@@ -8,8 +8,21 @@ import { binanceService } from "./services/binance";
 import { SUPPORTED_CHAINS, NATIVE_TOKENS, CHAIN_NAMES, NON_EVM_NETWORKS, NON_EVM_NETWORK_NAMES, NON_EVM_NATIVE_TOKENS } from "@shared/networks";
 import { registerPriceRoutes } from "./routes/prices";
 import { SymbolMapper } from "./services/symbol-mapper";
+import { pool } from "./db";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Health check — app liveness + database reachability.
+  // Deliberately leaks nothing: no host, no user, no connection string,
+  // no driver error text. Only two coarse states.
+  app.get("/health", async (_req, res) => {
+    try {
+      await pool.query("SELECT 1");
+      res.status(200).json({ status: "ok", database: "ok" });
+    } catch {
+      res.status(503).json({ status: "degraded", database: "unavailable" });
+    }
+  });
+
   registerPriceRoutes(app);
   // Connection routes
   app.get("/api/connections", async (_req, res) => {

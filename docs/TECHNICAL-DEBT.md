@@ -5,7 +5,7 @@
 > `00-CURRENT-STATE-AUDIT.md` is a **historical snapshot** taken at commit
 > `2521133`. When the two disagree, **this file is current**.
 
-**Last updated:** 2026-08-31 (Phase 0A execution)
+**Last updated:** 2026-09-01 (Phase 0B execution)
 
 ---
 
@@ -160,7 +160,11 @@ table is genuinely unreferenced and removing it.
 ### TD-07 — `symbol` is untyped free text
 
 | Field | Value |
-|---|---|
+|
+
+**Resolution:** Phase 0B. Canonical asset registry implemented; `holdings` and `transactions` now carry a nullable `asset_id` plus source provenance. `symbol` is retained as a legacy/display field and is no longer treated as identity anywhere in the resolution path.
+
+---|---|
 | **Title** | Assets identified by free-text `symbol` on `holdings` and `transactions` |
 | **Discovered** | 2026-08-29 · commit `2521133` |
 | **Phase discovered** | Documentation |
@@ -190,7 +194,11 @@ table is genuinely unreferenced and removing it.
 ### TD-09 — No test suite
 
 | Field | Value |
-|---|---|
+|
+
+**Update (Phase 0B):** a minimal harness now exists — `node:test` + `tsx`, zero new dependencies, `npm test`. 13 identity tests pass. Coverage is limited to identity rules; the Phase 4 guardrail tests (notably G-3) are still outstanding.
+
+---|---|
 | **Title** | No automated tests present in the repository |
 | **Discovered** | 2026-08-29 · commit `2521133` |
 | **Phase discovered** | Documentation |
@@ -331,6 +339,68 @@ table is genuinely unreferenced and removing it.
 
 ## Summary
 
+### TD-18 — EVM/Solana contract addresses were fetched and discarded
+
+| Field | Value |
+|---|---|
+| **Title** | Wallet scan retrieved contract/mint addresses but never persisted them |
+| **Discovered** | 2026-09-01 · Phase 0B preflight |
+| **Phase discovered** | Phase 0B |
+| **Severity** | HIGH |
+| **Blocker** | **WAS** — deterministic identity is impossible without an on-chain address |
+| **Rationale** | `createHolding` stored only `connectionId, symbol, name, amount, avgCost`. Etherscan's `TokenInfo` did not even carry the address in its type, and the Solscan mint was dropped at the call site. Any resolution would have been symbol-only guessing. |
+| **Resolution** | `contractAddress` added to `TokenInfo` and populated in both Etherscan paths; all `createHolding` call sites now persist `source_contract_address`, `source_chain_id`, `source_network_family`. |
+| **Target phase** | Phase 0B |
+| **Status** | RESOLVED |
+
+---
+
+### TD-19 — Historical holdings cannot be retroactively resolved
+
+| Field | Value |
+|---|---|
+| **Title** | Holdings created before Phase 0B carry no contract address |
+| **Discovered** | 2026-09-01 · Phase 0B |
+| **Phase discovered** | Phase 0B |
+| **Severity** | LOW *(currently zero-impact)* |
+| **Blocker** | NO |
+| **Rationale** | Rows written before TD-18 was fixed have only a symbol, so they can never be resolved deterministically — only re-scanned. **Current impact is zero**: the production database held 0 holdings at migration time. The exposure is theoretical unless a database is restored from an older backup. |
+| **Mitigation** | Such rows stay `UNRESOLVED` and are re-resolved on the next wallet sync, which now captures the address. |
+| **Target phase** | — |
+| **Status** | OPEN — accepted |
+
+---
+
+### TD-20 — No admin UI for manual identity mapping
+
+| Field | Value |
+|---|---|
+| **Title** | Manual override is supported in the data model but has no interface |
+| **Discovered** | 2026-09-01 · Phase 0B |
+| **Phase discovered** | Phase 0B |
+| **Severity** | MEDIUM |
+| **Blocker** | NO |
+| **Rationale** | `holdings.manual_override` exists and `shouldApplyAutomaticResolution()` enforces its precedence, so a manual mapping is never silently overwritten. Setting one currently requires direct SQL. Building an admin UI would have widened Phase 0B well beyond identity. |
+| **Target phase** | unassigned |
+| **Status** | OPEN |
+
+---
+
+### TD-21 — Economic exposure groups are modelled but unpopulated
+
+| Field | Value |
+|---|---|
+| **Title** | `assets.economic_group` exists with no seeding mechanism |
+| **Discovered** | 2026-09-01 · Phase 0B |
+| **Phase discovered** | Phase 0B |
+| **Severity** | LOW |
+| **Blocker** | NO for 0B · relevant at **Phase 7** |
+| **Rationale** | The column supports computing concentration on real exposure (ETH across four chains is one exposure, not four). Deciding *how* groups are seeded — curated list, provider data, or both — is open question Q-2 in `02-ASSET-IDENTITY.md` and is a Portfolio Intelligence concern. |
+| **Target phase** | Phase 7 |
+| **Status** | OPEN |
+
+---
+
 ### Phase 0A exit blockers — all closed
 
 | ID | Item | Status |
@@ -349,7 +419,24 @@ table is genuinely unreferenced and removing it.
 | **Phase 4 blockers** | TD-09 |
 | Non-blocking / accepted | TD-01, TD-02, TD-08, TD-10, TD-15, TD-16, TD-17 |
 
+### Phase 0B outcome
+
+| ID | Item | Status |
+|---|---|---|
+| TD-07 | `symbol` as identity | ✅ RESOLVED |
+| TD-18 | contract addresses discarded | ✅ RESOLVED *(discovered during 0B)* |
+| TD-09 | no test suite | 🟡 PARTIALLY ADDRESSED |
+
+### Remaining
+
+| Blocker | IDs |
+|---|---|
+| **Phase 4 blockers** | TD-09 *(guardrail tests still needed)* |
+| **Phase 7** | TD-21 |
+| Non-blocking / accepted | TD-01, TD-02, TD-04, TD-08, TD-10, TD-15, TD-16, TD-17, TD-19, TD-20 |
+
 | Status | Count |
 |---|---|
-| RESOLVED | 6 |
-| OPEN | 11 |
+| RESOLVED | 8 |
+| PARTIALLY ADDRESSED | 1 |
+| OPEN | 12 |

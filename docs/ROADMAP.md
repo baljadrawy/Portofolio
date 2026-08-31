@@ -8,26 +8,32 @@
 ## Implementation status — read this first
 
 ```
-Phase 0A Pre-Execution Audit / Design Gate : PASS
-Phase 0A Implementation Status             : NOT STARTED
+Phase 0A Production Baseline : PASS  (implemented)
+Phase 0B Canonical Asset Identity : PASS  (implemented)
+Phase 1  Intelligence Foundations : NOT STARTED
 ```
 
 > ### DESIGN/AUDIT APPROVED ≠ IMPLEMENTATION COMPLETE
+>
+> This distinction still governs every phase below. Phases 0A and 0B are marked
+> implemented because they were executed and verified, not because they were
+> designed.
 
-Nothing in this roadmap has been built. As of the correction date, the following
-**do not exist**:
+Phases 0A and 0B are built. Everything from Phase 1 onward is design only.
 
 | Item | Status |
 |---|---|
-| `portfolio` database | NOT CREATED |
-| `portfolio_app` role | NOT CREATED |
-| `.env.production` | NOT CREATED |
-| `Dockerfile` | NOT CREATED |
-| `docker-compose.yml` | NOT CREATED |
-| `portfolio-app` container | NOT CREATED |
-| `/health` endpoint | NOT IMPLEMENTED |
-| node-postgres driver swap | NOT APPLIED (still `@neondatabase/serverless`) |
-| Canonical Asset Registry | NOT IMPLEMENTED |
+| `portfolio` database | ✅ CREATED (Phase 0A) |
+| `portfolio_app` role | ✅ CREATED (Phase 0A) |
+| `.env.production` | ✅ CREATED (Phase 0A, gitignored, 600) |
+| `Dockerfile` · `docker-compose.yml` | ✅ CREATED (Phase 0A) |
+| `portfolio-app` container | ✅ RUNNING healthy on port 3003 (Phase 0A) |
+| `/health` endpoint | ✅ IMPLEMENTED — 200 / 503 (Phase 0A) |
+| node-postgres driver swap | ✅ APPLIED (Phase 0A) |
+| Canonical Asset Registry | ✅ IMPLEMENTED (Phase 0B) |
+| Evidence Store · Event Store | ❌ NOT IMPLEMENTED (Phase 2) |
+| Security Engine · Scam Gate | ❌ NOT IMPLEMENTED (Phase 2) |
+| AI / Research / Thesis / Decision | ❌ NOT IMPLEMENTED |
 
 A design gate passing means *the plan was reviewed and approved*. It does not
 mean anything was executed. Any future agent reading these documents must treat
@@ -134,6 +140,23 @@ Both halves are binding. See `02-ASSET-IDENTITY.md` §0.
 **Exit criteria:** every holding resolves to an `asset_id` · rebrand lineage
 preserves investment history · economic exposure groups defined · migration is
 additive and reversible · tracker behaviour unchanged.
+
+### Implementation outcome (2026-09-01)
+
+`PASS`. Delivered:
+
+- `assets` · `asset_network_identities` · `asset_provider_mappings` · `asset_aliases`
+- `holdings` and `transactions` gained nullable `asset_id`, `identity_status`,
+  and source-provenance columns — additive, non-destructive
+- `AssetIdentityService`: deterministic, precedence-ordered, **no AI**
+- Pure rules extracted to `shared/asset-identity-rules.ts` — 13 tests, all passing
+- EVM contract addresses and Solana mints are now **captured** at scan time;
+  previously the services fetched them and discarded them, which made
+  deterministic resolution impossible
+
+Production data at migration time was empty (0 holdings / 0 transactions), so no
+existing rows required resolution. The resolver still refuses to guess: a
+symbol-only match yields `AMBIGUOUS`, never `RESOLVED`.
 
 ---
 

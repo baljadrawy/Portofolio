@@ -1,6 +1,19 @@
 # Canonical Asset Identity
 
-> **Status:** Architecture contract. **Phase 0B.**
+> **Status:** Architecture contract — **IMPLEMENTED (Phase 0B, 2026-09-01).**
+>
+> Delivered tables: `assets` · `asset_network_identities` ·
+> `asset_provider_mappings` · `asset_aliases`, plus additive identity columns on
+> `holdings` and `transactions`. Resolver: `server/services/asset-identity.ts`;
+> pure rules: `shared/asset-identity-rules.ts`. Migration:
+> `migrations/0001_canonical_asset_identity.sql` (additive only).
+>
+> Two implementation details differ from this document's sketch and the code is
+> authoritative: the network identity key is
+> `(network_family, chain_id, address_key)` with `NULLS NOT DISTINCT` — required
+> because Solana rows carry `chain_id = NULL` and the PostgreSQL default would
+> let duplicate mints through — and address normalisation is per-family, never
+> universal lowercase.
 
 ---
 

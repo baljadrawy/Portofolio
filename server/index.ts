@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic, log } from "./static";
+import { registerSecurityProviders } from "./services/security";
 import { initializeSampleData } from "./seed-data";
 
 const app = express();
@@ -48,6 +49,10 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Security providers are registered once at boot. No network call happens
+  // here — registration only populates the in-process registry.
+  registerSecurityProviders();
+
   // Demo seed is opt-in. It runs only outside production, or when explicitly
   // requested via SEED_DEMO_DATA=true. Without this guard a fresh production
   // database is seeded with demo wallets on first boot (TD-06).

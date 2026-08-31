@@ -10,7 +10,8 @@
 ```
 Phase 0A Production Baseline : PASS  (implemented)
 Phase 0B Canonical Asset Identity : PASS  (implemented)
-Phase 1  Intelligence Foundations : NOT STARTED
+Phase 1  Intelligence Foundations : PASS  (implemented)
+Phase 2  Evidence + Security Platform : NOT STARTED
 ```
 
 > ### DESIGN/AUDIT APPROVED ≠ IMPLEMENTATION COMPLETE
@@ -201,6 +202,23 @@ evidence.
 **Exit criteria:** a security finding can be represented as an evidence record
 with full provenance · `SecurityProvider` interface defined and stubbed ·
 Palisade go/no-go decision recorded with measured evidence.
+
+### Implementation outcome (2026-09-01)
+
+`PASS`. Delivered:
+
+- `evidence_sources` · `evidence` · `evidence_snapshots` · `evidence_snapshot_items`
+- Three distinct timestamps (`observed_at` / `effective_at` / `retrieved_at`) so
+  historical replay cannot see the future
+- Deterministic hashing with canonical JSON and a `hash_version`
+- Dedup scoped to `(source_key, hash)` — **corroboration from a different source
+  is deliberately allowed through**, enforced by a DB unique index
+- Snapshot immutability enforced by database triggers, not application discipline
+- `SecurityProvider` abstraction — provider-neutral, read-only, minimum-data
+- Palisade evaluated at commit `7df719d` → **`REFERENCE_ONLY`**, no adapter built
+- 50 tests passing (13 identity + 37 evidence/freshness/security)
+
+Nothing here produces a decision, a score, or an AI call.
 
 ---
 

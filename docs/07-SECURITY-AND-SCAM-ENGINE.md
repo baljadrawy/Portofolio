@@ -1,5 +1,18 @@
 # Security and Scam Engine
 
+> **Status:** **ABSTRACTION IMPLEMENTED (Phase 1, 2026-09-01).** Engine is Phase 2.
+>
+> `server/services/security-provider.ts` defines `SecurityProvider`,
+> `SecurityObservation`, and `observationsToEvidence()`. Providers emit
+> observations that become Evidence rows with `source_key = security:<provider>`
+> — there is no vendor column and no security-only datastore.
+>
+> Palisade evaluated → `REFERENCE_ONLY`. **No adapter built.** See
+> `12-EXTERNAL-REFERENCES.md` §2.
+>
+> Not yet built: Scam Gate · contract assessment · honeypot/rug detection ·
+> incident handling · false-positive safeguards. All Phase 2.
+>
 > **Status:** Architecture contract.
 > **Phased delivery:** `SecurityProvider` abstraction, Palisade feasibility, and
 > the security output contract land in **Phase 1**. The engine itself — contract

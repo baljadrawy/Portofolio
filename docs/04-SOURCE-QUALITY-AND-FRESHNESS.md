@@ -1,6 +1,15 @@
 # Source Quality and Freshness Policy
 
-> **Status:** Architecture contract. Phase 2.
+> **Status:** **FOUNDATION IMPLEMENTED (Phase 1, 2026-09-01).**
+>
+> Tiers live on `evidence_sources.tier` (CHECK 1..5). Freshness is computed
+> deterministically by `computeFreshness()` from (category, data time, as-of),
+> never stored as a bare status that silently rots. Policy version:
+> `FRESHNESS_POLICY_VERSION`. Thresholds are **PROPOSED and configurable**, not
+> empirically derived.
+>
+> Contract enforced in code: `Source Tier ≠ Evidence Confidence` — separate
+> ceilings that combine, never collapse. Covered by test.
 
 ---
 

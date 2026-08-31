@@ -1,5 +1,19 @@
 # Evidence Platform
 
+> **Status:** **FOUNDATION IMPLEMENTED (Phase 1, 2026-09-01).**
+>
+> Tables: `evidence_sources` · `evidence` · `evidence_snapshots` ·
+> `evidence_snapshot_items`. Rules: `shared/evidence-rules.ts` (pure).
+> Services: `server/services/evidence.ts`. Migration: `migrations/0002_evidence_core.sql`.
+>
+> Where implementation differs from this document, the code is authoritative:
+> the contract here uses `data_as_of`; the implementation splits it into
+> **`observed_at`** (when the fact was true) and **`effective_at`** (when it
+> comes into force), because a regulation announced today and effective next
+> month needs both to be replayable without leaking the future.
+>
+> Full store, conflict-resolution engine, and Event Store remain Phase 2.
+>
 > **Status:** Architecture contract.
 > **Phased delivery:** minimal Evidence Core + provenance contract in **Phase 1**;
 > full store, snapshots, conflict handling, and freshness enforcement in **Phase 2**.

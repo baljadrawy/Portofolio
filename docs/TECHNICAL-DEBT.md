@@ -5,7 +5,7 @@
 > `00-CURRENT-STATE-AUDIT.md` is a **historical snapshot** taken at commit
 > `2521133`. When the two disagree, **this file is current**.
 
-**Last updated:** 2026-09-01 (Phase 0B execution)
+**Last updated:** 2026-09-01 (Phase 1 execution)
 
 ---
 
@@ -401,6 +401,76 @@ table is genuinely unreferenced and removing it.
 
 ---
 
+### TD-22 — Snapshot cleanup requires disabling immutability triggers
+
+| Field | Value |
+|---|---|
+| **Title** | No sanctioned path to remove a FINALIZED snapshot |
+| **Discovered** | 2026-09-01 · Phase 1 |
+| **Severity** | LOW |
+| **Blocker** | NO |
+| **Rationale** | The immutability triggers are deliberately absolute — that is the point. Removing test fixtures required `ALTER TABLE ... DISABLE TRIGGER`, which only the table owner can do. Acceptable today; a retention policy (archive vs delete) will eventually need a sanctioned, audited path. |
+| **Target phase** | Phase 2 |
+| **Status** | OPEN |
+
+---
+
+### TD-23 — Evidence retention policy undefined
+
+| Field | Value |
+|---|---|
+| **Title** | Evidence is append-only with no retention or rollup policy |
+| **Discovered** | 2026-09-01 · Phase 1 |
+| **Severity** | MEDIUM |
+| **Blocker** | NO |
+| **Rationale** | Append-oriented storage is correct for auditability but grows without bound. Open question Q-1 in `03-EVIDENCE-PLATFORM.md`. No impact at current volume (0 rows); becomes material once collectors run continuously. |
+| **Target phase** | Phase 2 |
+| **Status** | OPEN |
+
+---
+
+### TD-24 — Third-party source terms never reviewed
+
+| Field | Value |
+|---|---|
+| **Title** | ToS / caching / retention / redistribution status is UNKNOWN for all live data sources |
+| **Discovered** | 2026-09-01 · Phase 1 |
+| **Severity** | MEDIUM |
+| **Blocker** | NO |
+| **Rationale** | Etherscan, Solscan, CoinGecko, CoinMarketCap, and Binance are **pre-existing** integrations whose terms were never reviewed. The Evidence Store makes caching and retention explicit, which raises the stakes. Recorded honestly as `UNKNOWN — REQUIRES REVIEW` in `13-DATA-GOVERNANCE.md` rather than assumed. |
+| **Target phase** | before any redistribution of derived data |
+| **Status** | OPEN |
+
+---
+
+### TD-25 — Raw evidence payloads stored inline as text
+
+| Field | Value |
+|---|---|
+| **Title** | `evidence.raw_value` is inline `text`, not JSONB or object storage |
+| **Discovered** | 2026-09-01 · Phase 1 |
+| **Severity** | LOW |
+| **Blocker** | NO |
+| **Rationale** | `text` keeps hashing and canonicalisation under application control and avoids PostgreSQL re-ordering JSONB keys, which would break hash determinism. The cost is no queryability inside the payload and unbounded row width for large responses. Open question Q-2 in `03-EVIDENCE-PLATFORM.md`. |
+| **Target phase** | Phase 2 |
+| **Status** | OPEN — accepted |
+
+---
+
+### TD-26 — No live provider implementation exists
+
+| Field | Value |
+|---|---|
+| **Title** | `SecurityProvider` has an interface and a FakeProvider, but no real provider |
+| **Discovered** | 2026-09-01 · Phase 1 |
+| **Severity** | MEDIUM |
+| **Blocker** | NO for Phase 1 · **YES for Phase 2** |
+| **Rationale** | Deliberate: Phase 1's scope is the contract, and Palisade was evaluated to `REFERENCE_ONLY`. Phase 2 must implement a real provider — most likely direct GoPlus/Blockscout integration rather than a wrapper. |
+| **Target phase** | Phase 2 |
+| **Status** | OPEN — by design |
+
+---
+
 ### Phase 0A exit blockers — all closed
 
 | ID | Item | Status |
@@ -435,8 +505,24 @@ table is genuinely unreferenced and removing it.
 | **Phase 7** | TD-21 |
 | Non-blocking / accepted | TD-01, TD-02, TD-04, TD-08, TD-10, TD-15, TD-16, TD-17, TD-19, TD-20 |
 
+### Phase 1 outcome
+
+| ID | Item | Status |
+|---|---|---|
+| TD-09 | test suite | 🟡 50 tests now (13 identity + 37 evidence/security) |
+| TD-22..TD-26 | new Phase 1 findings | OPEN, none blocking |
+
+### Remaining
+
+| Blocker | IDs |
+|---|---|
+| **Phase 2 blockers** | TD-26 (live provider) |
+| **Phase 4 blockers** | TD-09 (guardrail tests) |
+| **Phase 7** | TD-21 |
+| Non-blocking / accepted | TD-01, TD-02, TD-04, TD-08, TD-10, TD-15, TD-16, TD-17, TD-19, TD-20, TD-22..TD-25 |
+
 | Status | Count |
 |---|---|
 | RESOLVED | 8 |
 | PARTIALLY ADDRESSED | 1 |
-| OPEN | 12 |
+| OPEN | 17 |

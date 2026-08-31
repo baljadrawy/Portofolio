@@ -9,21 +9,16 @@
 ## Gate status
 
 ```
-Current Gate : DOCUMENTATION CORRECTION GATE
-Next Gate    : PHASE 0A — PRODUCTION BASELINE
+Completed    : Phase 0A · Phase 0B · Phase 1
+Next Gate    : PHASE 2 — EVIDENCE + SECURITY PLATFORM
 ```
 
-```
-Phase 0A implementation has not started yet.
-```
+
 
 > ### DESIGN/AUDIT APPROVED ≠ IMPLEMENTATION COMPLETE
 
-The Phase 0A pre-execution audit passed. **Nothing has been built.** The
-`portfolio` database, the `portfolio_app` role, `.env.production`, the
-`Dockerfile`, the container, the `/health` endpoint, and the node-postgres driver
-swap **do not exist**. See [`ROADMAP.md`](./ROADMAP.md) for the full
-not-yet-created inventory.
+Phases 0A, 0B, and 1 are **implemented and verified**. Everything from Phase 2
+onward is design only. See [`ROADMAP.md`](./ROADMAP.md) for exact status per item.
 
 ---
 
@@ -57,7 +52,8 @@ Platform** — a system that answers, continuously and with auditable evidence:
 | 09 | [Scoring and Decision](./09-SCORING-AND-DECISION.md) | Scoring v1, decision enum, deterministic policy |
 | 10 | [AI Provider Abstraction](./10-AI-PROVIDER-ABSTRACTION.md) | Provider interface, structured output |
 | 11 | [Portfolio Intelligence](./11-PORTFOLIO-INTELLIGENCE.md) | Asset decision vs. portfolio action, monitoring |
-| 12 | [External References](./12-EXTERNAL-REFERENCES.md) | Palisade, VerumTrade, openportfolio, analystOS, Orbiter |
+| 12 | [External References](./12-EXTERNAL-REFERENCES.md) | Palisade **(evaluated → REFERENCE_ONLY)**, VerumTrade, openportfolio, analystOS, Orbiter |
+| 13 | [Data Governance](./13-DATA-GOVERNANCE.md) | Source ToS/licensing status · privacy contract |
 | — | [Roadmap](./ROADMAP.md) | Phases 0A–9 with exit criteria and gate status |
 | — | [Technical Debt](./TECHNICAL-DEBT.md) | **Living register.** Authoritative over doc 00 |
 | — | [ADRs](./adr/) | Decisions that require an ADR to change |

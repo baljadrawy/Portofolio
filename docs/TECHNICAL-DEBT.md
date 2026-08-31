@@ -5,7 +5,7 @@
 > `00-CURRENT-STATE-AUDIT.md` is a **historical snapshot** taken at commit
 > `2521133`. When the two disagree, **this file is current**.
 
-**Last updated:** 2026-08-31 (Documentation Correction Gate)
+**Last updated:** 2026-08-31 (Phase 0A execution)
 
 ---
 
@@ -87,7 +87,11 @@ table is genuinely unreferenced and removing it.
 ### TD-03 — No health endpoint
 
 | Field | Value |
-|---|---|
+|
+
+**Resolution:** **RESOLVED** — Phase 0A. `GET /health` added: 200 `{status:ok,database:ok}` / 503 `{status:degraded,database:unavailable}`. Leaks no host, user, credentials, or stack trace.
+
+---|---|
 | **Title** | No `/health` or `/ready` endpoint exists |
 | **Discovered** | 2026-08-29 · commit `2521133` |
 | **Phase discovered** | Documentation |
@@ -117,7 +121,11 @@ table is genuinely unreferenced and removing it.
 ### TD-05 — Neon driver blocks self-hosting
 
 | Field | Value |
-|---|---|
+|
+
+**Resolution:** **RESOLVED** — Phase 0A. `server/db.ts` swapped to `pg` + `drizzle-orm/node-postgres`. `@neondatabase/serverless` removed from dependencies. Zero Neon references remain.
+
+---|---|
 | **Title** | `server/db.ts` uses `@neondatabase/serverless` (WebSocket to Neon proxy) |
 | **Discovered** | 2026-08-29 · commit `2521133` |
 | **Phase discovered** | Documentation |
@@ -133,7 +141,11 @@ table is genuinely unreferenced and removing it.
 ### TD-06 — Demo seed runs on every boot
 
 | Field | Value |
-|---|---|
+|
+
+**Resolution:** **RESOLVED** — Phase 0A. Demo seed is now opt-in: runs only outside production, or with `SEED_DEMO_DATA=true`. Verified in production logs: `demo seed skipped (production)`.
+
+---|---|
 | **Title** | `initializeSampleData()` runs in the production start path |
 | **Discovered** | 2026-08-29 · commit `2521133` |
 | **Phase discovered** | Documentation |
@@ -208,7 +220,11 @@ table is genuinely unreferenced and removing it.
 ### TD-11 — Backup coverage for a new database is unverified
 
 | Field | Value |
-|---|---|
+|
+
+**Resolution:** **RESOLVED** — Phase 0A. Backup was a FIXED LIST, not cluster-wide. `portfolio` added; real run produced `portfolio OK — 1.3K` and the artifact was verified on Google Drive.
+
+---|---|
 | **Title** | Unknown whether server backups cover the whole PostgreSQL cluster or a fixed database list |
 | **Discovered** | 2026-08-31 · Documentation Correction Gate |
 | **Phase discovered** | Documentation |
@@ -221,18 +237,119 @@ table is genuinely unreferenced and removing it.
 
 ---
 
+### TD-12 — Dead `xsch` entry in the backup script
+
+| Field | Value |
+|---|---|
+| **Title** | Backup script referenced the deleted `xsch` database |
+| **Discovered** | 2026-08-31 · Phase 0A |
+| **Phase discovered** | Phase 0A |
+| **Severity** | MEDIUM |
+| **Blocker** | NO |
+| **Rationale** | `xsch` was deleted on 2026-08-29 but its `dump_db` line remained. Every nightly run failed on it and the script exited non-zero, which would mask a real backup failure. Removed while adding `portfolio` — the same one-line edit, and required to make TD-11 verifiable. |
+| **Target phase** | Phase 0A |
+| **Status** | RESOLVED |
+
+---
+
+### TD-13 — Production bundle pulled in `vite`
+
+| Field | Value |
+|---|---|
+| **Title** | `dist/index.js` statically imported `vite` (a devDependency) |
+| **Discovered** | 2026-08-31 · Phase 0A |
+| **Phase discovered** | Phase 0A |
+| **Severity** | HIGH |
+| **Blocker** | **WAS** — container crash-looped with `ERR_MODULE_NOT_FOUND: vite` |
+| **Rationale** | `server/index.ts` statically imported `./vite`, whose module graph reaches `vite` and `vite.config.ts`. Never surfaced on Replit, which installs devDependencies in production. |
+| **Resolution** | Production-safe `log`/`serveStatic` extracted to `server/static.ts`; `./vite` dynamically imported in the dev branch only and marked `--external:./vite` in the esbuild step. Verified: zero static `vite` imports in `dist/index.js`. |
+| **Target phase** | Phase 0A |
+| **Status** | RESOLVED |
+
+---
+
+### TD-14 — `EtherscanService` threw at construction
+
+| Field | Value |
+|---|---|
+| **Title** | Missing `ETHERSCAN_API_KEY` crashed the whole application at boot |
+| **Discovered** | 2026-08-31 · Phase 0A |
+| **Phase discovered** | Phase 0A |
+| **Severity** | HIGH |
+| **Blocker** | **WAS** — app could not start without an optional provider key |
+| **Rationale** | The constructor threw when the key was absent. `CoinMarketCapService` already used the correct lazy pattern (`ensureApiKey()`), and `SolscanService` checks per request — `EtherscanService` was the outlier. |
+| **Resolution** | Key check deferred to call time via `ensureApiKey()`, matching the existing in-repo pattern. Deployment health is now independent of optional provider availability. |
+| **Target phase** | Phase 0A |
+| **Status** | RESOLVED |
+
+---
+
+### TD-15 — Pre-existing TypeScript errors
+
+| Field | Value |
+|---|---|
+| **Title** | `npm run check` reports 3 errors on untouched files |
+| **Discovered** | 2026-08-31 · Phase 0A |
+| **Phase discovered** | Phase 0A |
+| **Severity** | MEDIUM |
+| **Blocker** | NO |
+| **Rationale** | In `client/src/components/examples/HoldingsTable.tsx` and `server/seed-data.ts`. Confirmed pre-existing: the same 3 errors are present on the base commit before any Phase 0A change. The build uses esbuild, which does not typecheck, so they do not block deployment. |
+| **Target phase** | unassigned |
+| **Status** | OPEN |
+
+---
+
+### TD-16 — `portfolio_app` can connect to other project databases
+
+| Field | Value |
+|---|---|
+| **Title** | PostgreSQL `PUBLIC` default grants CONNECT on `baity` and `tamrini` |
+| **Discovered** | 2026-08-31 · Phase 0A |
+| **Phase discovered** | Phase 0A |
+| **Severity** | LOW |
+| **Blocker** | NO |
+| **Rationale** | `datacl` is NULL on both databases, i.e. the PostgreSQL default — **not** a grant made during Phase 0A. Measured impact is connect-only: `portfolio_app` gets `permission denied for schema public` on any table read and cannot create objects. The Phase 0A brief explicitly forbids revoking PUBLIC CONNECT from other projects, since that risks breaking them. `portfolio` itself has PUBLIC revoked (`portfolio_app=CTc/portfolio_app`). |
+| **Target phase** | separate server-wide hardening |
+| **Status** | OPEN — accepted |
+
+---
+
+### TD-17 — No migration/runtime privilege separation
+
+| Field | Value |
+|---|---|
+| **Title** | `portfolio_app` performs both schema migration and runtime access |
+| **Discovered** | 2026-08-31 · Phase 0A |
+| **Phase discovered** | Phase 0A |
+| **Severity** | LOW |
+| **Blocker** | NO |
+| **Rationale** | Ideal least-privilege separates a DDL-capable migration role from a DML-only runtime role. Introducing two roles would have complicated Phase 0A without materially reducing risk on a single-operator server. Explicitly permitted by the Phase 0A brief §7. |
+| **Target phase** | Phase 0B (alongside versioned migrations, TD-04) |
+| **Status** | OPEN — accepted |
+
+---
+
 ## Summary
 
-| Blocker | Count | IDs |
-|---|---|---|
-| **Phase 0A blockers** | 3 | TD-03, TD-05, TD-11 |
-| **Phase 0B blockers** | 2 | TD-04, TD-07 |
-| **Phase 4 blockers** | 1 | TD-09 |
-| Non-blocking | 5 | TD-01, TD-02, TD-06, TD-08, TD-10 |
+### Phase 0A exit blockers — all closed
 
-| Severity | Count |
+| ID | Item | Status |
+|---|---|---|
+| TD-03 | `/health` endpoint | ✅ RESOLVED |
+| TD-05 | Neon driver | ✅ RESOLVED |
+| TD-11 | Backup inclusion | ✅ RESOLVED |
+| TD-13 | vite in production bundle | ✅ RESOLVED *(discovered during 0A)* |
+| TD-14 | Etherscan boot crash | ✅ RESOLVED *(discovered during 0A)* |
+
+### Remaining
+
+| Blocker | IDs |
 |---|---|
-| CRITICAL | 1 |
-| HIGH | 5 |
-| MEDIUM | 3 |
-| LOW | 2 |
+| **Phase 0B blockers** | TD-04, TD-07 |
+| **Phase 4 blockers** | TD-09 |
+| Non-blocking / accepted | TD-01, TD-02, TD-08, TD-10, TD-15, TD-16, TD-17 |
+
+| Status | Count |
+|---|---|
+| RESOLVED | 6 |
+| OPEN | 11 |

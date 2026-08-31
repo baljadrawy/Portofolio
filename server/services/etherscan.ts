@@ -42,6 +42,9 @@ interface TokenInfo {
   name: string;
   balance: string;
   decimals: number;
+  // Phase 0B: the ERC-20 contract IS the identity. Previously fetched and
+  // discarded, which left EVM tokens unresolvable by anything but symbol.
+  contractAddress?: string;
 }
 
 interface WalletData {
@@ -146,7 +149,8 @@ export class EtherscanService {
               symbol: token.TokenSymbol || 'UNKNOWN',
               name: token.TokenName || 'Unknown Token',
               balance: balanceStr,
-              decimals: decimals
+              decimals: decimals,
+              contractAddress: (token as any).TokenAddress || undefined
             });
             
             console.log(`[Etherscan] Found token: ${token.TokenSymbol} - Balance: ${balanceStr}`);
@@ -180,7 +184,7 @@ export class EtherscanService {
         return [];
       }
 
-      const tokenMap = new Map<string, { symbol: string; name: string; decimals: number; balance: bigint }>();
+      const tokenMap = new Map<string, { contractAddress: string; symbol: string; name: string; decimals: number; balance: bigint }>();
 
       for (const tx of data.result) {
         const tokenAddress = (tx as any).contractAddress?.toLowerCase();
@@ -196,6 +200,7 @@ export class EtherscanService {
 
         if (!tokenMap.has(tokenAddress)) {
           tokenMap.set(tokenAddress, {
+            contractAddress: tokenAddress,
             symbol: tokenSymbol,
             name: tokenName,
             decimals: tokenDecimal,

@@ -155,6 +155,15 @@ export class MemStorage implements IStorage {
       currentPrice: insertHolding.currentPrice ?? null,
       avgCost: insertHolding.avgCost ?? '0',
       updatedAt: new Date(),
+      // Phase 0B identity fields. Default to UNRESOLVED: an in-memory holding
+      // has no proven identity until the resolver assigns one.
+      assetId: insertHolding.assetId ?? null,
+      identityStatus: 'UNRESOLVED',
+      resolutionMethod: null,
+      manualOverride: false,
+      sourceContractAddress: insertHolding.sourceContractAddress ?? null,
+      sourceChainId: insertHolding.sourceChainId ?? null,
+      sourceNetworkFamily: insertHolding.sourceNetworkFamily ?? null,
     };
     this.holdings.set(id, holding);
     return holding;
@@ -236,6 +245,11 @@ export class MemStorage implements IStorage {
       total: insertTransaction.total,
       timestamp: insertTransaction.timestamp,
       source: insertTransaction.source,
+      // Phase 0B identity fields — same default as holdings.
+      assetId: insertTransaction.assetId ?? null,
+      identityStatus: 'UNRESOLVED',
+      sourceContractAddress: insertTransaction.sourceContractAddress ?? null,
+      sourceChainId: insertTransaction.sourceChainId ?? null,
     };
     this.transactions.set(id, transaction);
     return transaction;

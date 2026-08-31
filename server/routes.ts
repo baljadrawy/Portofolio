@@ -140,7 +140,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 symbol: token.symbol,
                 name: token.name,
                 amount: token.balance,
-                avgCost: '0'
+                avgCost: '0',
+                // Phase 0B provenance: ERC-20 contract + chain. EVM addresses are
+                // case-insensitive, so casing carries no identity information.
+                sourceContractAddress: token.contractAddress ?? null,
+                sourceChainId: connection.chainId ?? null,
+                sourceNetworkFamily: 'evm',
               });
               console.log(`[Scan] Created token holding: ${token.symbol} (${token.balance})`);
             }
@@ -447,7 +452,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             symbol: 'SOL',
             name: 'Solana',
             amount: walletData.solBalance,
-            avgCost: '0'
+            avgCost: '0',
+            // Phase 0B provenance: native asset, no mint address.
+            sourceNetworkFamily: 'solana',
           });
           console.log(`[Wallet Sync] Added SOL holding: ${walletData.solBalance}`);
         }
@@ -459,7 +466,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               symbol: token.symbol,
               name: token.name,
               amount: token.balance,
-              avgCost: '0'
+              avgCost: '0',
+              // Phase 0B provenance: the mint IS the identity. Stored exact-case;
+              // Solana base58 is case-sensitive and must never be lowercased.
+              sourceContractAddress: token.contractAddress ?? null,
+              sourceNetworkFamily: 'solana',
             });
             console.log(`[Wallet Sync] Added token: ${token.symbol} (${token.balance})`);
           }
@@ -513,7 +524,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           symbol: nativeToken.symbol,
           name: nativeToken.name,
           amount: walletData.ethBalance,
-          avgCost: '0'
+          avgCost: '0',
+          // Phase 0B provenance: native asset — identity is the chain itself.
+          sourceChainId: connection.chainId ?? null,
+          sourceNetworkFamily: 'evm',
         });
         console.log(`[Wallet Sync] Created ${nativeToken.symbol} holding: ${walletData.ethBalance}`);
       }
@@ -545,7 +559,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 symbol: token.symbol,
                 name: token.name,
                 amount: token.balance,
-                avgCost: '0'
+                avgCost: '0',
+                // Phase 0B provenance: ERC-20 contract + chain. EVM addresses are
+                // case-insensitive, so casing carries no identity information.
+                sourceContractAddress: token.contractAddress ?? null,
+                sourceChainId: connection.chainId ?? null,
+                sourceNetworkFamily: 'evm',
               });
               console.log(`[Wallet Sync] Created token: ${token.symbol} (${token.balance})`);
             }

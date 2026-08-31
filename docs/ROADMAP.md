@@ -1,69 +1,226 @@
 # Roadmap
 
-> **Status:** Official phase plan. Phases are sequential; each depends on the
-> contracts established by the previous one.
+> **Status:** Official phase plan.
+> **Last corrected:** 2026-08-31 (Documentation Correction Gate)
 
 ---
 
-## Phase 0 — Foundation
+## Implementation status — read this first
 
-**Goal:** production-deployable baseline + canonical asset identity.
+```
+Phase 0A Pre-Execution Audit / Design Gate : PASS
+Phase 0A Implementation Status             : NOT STARTED
+```
 
-- [ ] Production container baseline
-- [ ] Shared PostgreSQL integration
-- [ ] Health / readiness endpoints
-- [ ] **Canonical asset identity** (`02 · Asset Identity`)
-- [ ] Provider mappings on the asset registry
-- [ ] Architecture contracts *(this documentation set — done)*
-- [ ] Baseline regression suite
+> ### DESIGN/AUDIT APPROVED ≠ IMPLEMENTATION COMPLETE
 
-**Known Phase 0 task:** `server/db.ts` uses `@neondatabase/serverless`, which
-cannot reach a self-hosted PostgreSQL. Requires swapping to
-`pg` + `drizzle-orm/node-postgres`. See `00-CURRENT-STATE-AUDIT.md` §9.
+Nothing in this roadmap has been built. As of the correction date, the following
+**do not exist**:
 
-> Docker / shared-PostgreSQL work is tracked separately and is **not** part of
-> the documentation task that produced these files.
+| Item | Status |
+|---|---|
+| `portfolio` database | NOT CREATED |
+| `portfolio_app` role | NOT CREATED |
+| `.env.production` | NOT CREATED |
+| `Dockerfile` | NOT CREATED |
+| `docker-compose.yml` | NOT CREATED |
+| `portfolio-app` container | NOT CREATED |
+| `/health` endpoint | NOT IMPLEMENTED |
+| node-postgres driver swap | NOT APPLIED (still `@neondatabase/serverless`) |
+| Canonical Asset Registry | NOT IMPLEMENTED |
 
-**Exit criteria:** container runs against shared PostgreSQL; every holding
-resolves to an `asset_id`; existing tracker functionality unchanged.
+A design gate passing means *the plan was reviewed and approved*. It does not
+mean anything was executed. Any future agent reading these documents must treat
+every item above as work still to be done.
 
 ---
 
-## Phase 1 — Security Foundation
+## Gate sequence
 
-**Why first among intelligence work:** security findings can *override* every
-other conclusion (`07 · Security Engine` §5). A scoring system that can be
-overridden by a layer that does not exist yet is incomplete.
+```
+Documentation Correction Gate          ← current
+        ↓
+Phase 0A — Production Baseline
+        ↓
+Phase 0B — Canonical Asset Identity
+        ↓
+Phase 1  — Intelligence Foundations
+        ↓
+Phase 2  — Evidence + Security Platform
+        ↓
+Phase 3  — Asset Research MVP
+        ↓
+Phase 4  — Decision Intelligence
+        ↓
+Phase 5  — Thesis Memory
+        ↓
+Phase 6  — Advanced Intelligence
+        ↓
+Phase 7  — Portfolio Intelligence
+        ↓
+Phase 8  — Continuous Monitoring
+        ↓
+Phase 9  — Optimization  (DEFERRED)
+```
 
+---
+
+## Phase 0A — Production Baseline
+
+**Goal:** run the **existing application, unchanged in behaviour**, safely and
+verifiably on the server.
+
+### Scope
+
+- [ ] Production container baseline (multi-stage, non-root, deterministic install)
+- [ ] Shared PostgreSQL integration (external network, no new PG container)
+- [ ] Database + role creation — *performed during execution, not before*
+- [ ] Neon → `node-postgres` driver replacement — *performed during execution*
+- [ ] Health / readiness endpoint
+- [ ] Docker network integration
+- [ ] Secret handling (outside Git, restricted file permissions)
+- [ ] Backup inclusion verification
+- [ ] Regression baseline
+
+### Explicitly NOT in scope
+
+```
+❌ Canonical Asset Registry implementation
+❌ Intelligence features
+❌ Palisade
+❌ AI
+❌ Research
+```
+
+### Independence contract
+
+```
+Phase 0A can reach PASS without Canonical Asset Identity being started.
+```
+
+This is deliberate. The existing tracker is functional software; deploying it
+must not be gated on a foundation that only the Intelligence Layer needs.
+
+**Exit criteria:** container runs against shared PostgreSQL · health endpoint
+responds · existing tracker functionality verified unchanged · backup coverage
+confirmed · no regression against the pre-deployment baseline.
+
+---
+
+## Phase 0B — Canonical Asset Identity
+
+**Goal:** build the foundation every Intelligence feature depends on.
+
+### Scope
+
+- [ ] Canonical asset registry
+- [ ] Provider mappings (CoinGecko / CoinMarketCap / others)
+- [ ] Chain / network identity
+- [ ] Contract identity
+- [ ] Duplicate ticker handling
+- [ ] Wrapped / bridged asset handling
+- [ ] Token migration and rebrand continuity
+- [ ] Migration strategy for existing holdings
+
+### Blocker scope — precise
+
+```
+Canonical Asset Identity = BLOCKER BEFORE INVESTMENT INTELLIGENCE
+Canonical Asset Identity ≠ BLOCKER FOR CURRENT APPLICATION PRODUCTION DEPLOYMENT
+```
+
+Both halves are binding. See `02-ASSET-IDENTITY.md` §0.
+
+**Exit criteria:** every holding resolves to an `asset_id` · rebrand lineage
+preserves investment history · economic exposure groups defined · migration is
+additive and reversible · tracker behaviour unchanged.
+
+---
+
+## Phase 1 — Intelligence Foundations
+
+**Goal:** establish the contracts that everything downstream writes into —
+**before** any engine starts producing data.
+
+### Scope
+
+- [ ] Minimal Evidence Core
+- [ ] Evidence identity / provenance contract
+- [ ] Source tier + freshness foundation
 - [ ] `SecurityProvider` abstraction
-- [ ] Palisade feasibility evaluation → integration decision
-- [ ] Contract assessment
-- [ ] Scam Gate
-- [ ] Honeypot / rug indicators
-- [ ] Security incident model with component attribution
-- [ ] False-positive safeguards (FP-1 … FP-8)
-- [ ] Security score
+- [ ] Palisade feasibility evaluation (license, maintenance, chains, **measured
+      false-positive behaviour**)
+- [ ] Security output contract — what a security finding looks like *as evidence*
 
-**Exit criteria:** a held asset can be assessed for contract-level risk with
-evidence; the Scam Gate can override with published reasoning; measured
-false-positive rate on a known-good sample.
+### Explicitly NOT in scope
+
+```
+❌ Full Security Engine
+❌ Scam Gate
+❌ Full Evidence Store
+```
+
+### Why the ordering changed
+
+The previous plan placed a full Security Engine at Phase 1, ahead of Evidence at
+Phase 2. That would have produced security findings with nowhere correct to live.
+
+```
+Security findings ARE evidence.
+```
+
+Building a Security Engine first means building its own storage, then migrating
+it into the Evidence Store later — a data silo created deliberately and paid for
+twice. Phase 1 now lands the evidence contract and the security *interface*
+together, so the first security finding ever produced is already written as
+evidence.
+
+**Exit criteria:** a security finding can be represented as an evidence record
+with full provenance · `SecurityProvider` interface defined and stubbed ·
+Palisade go/no-go decision recorded with measured evidence.
 
 ---
 
-## Phase 2 — Evidence Platform
+## Phase 2 — Evidence + Security Platform
 
-- [ ] Evidence Store
-- [ ] Provenance
-- [ ] Source tiers
-- [ ] Freshness matrix
+**Goal:** the full evidence platform, with security as its first major producer.
+
+### Scope
+
+**Evidence**
+- [ ] Full Evidence Store
 - [ ] Evidence snapshots
 - [ ] Conflict handling
+- [ ] Freshness enforcement
 - [ ] Event Store
 - [ ] Caching
 - [ ] Evidence audit trail
 
-**Exit criteria:** every stored fact traces to source + tier + `data_as_of`;
-snapshots reproduce identical inputs; conflicts surface rather than average.
+**Security (ingesting into the above)**
+- [ ] Security ingestion into the Evidence Store
+- [ ] Contract assessment
+- [ ] Honeypot / rug indicators
+- [ ] Security incident handling with component attribution
+- [ ] Scam Gate
+- [ ] False-positive safeguards (FP-1 … FP-8)
+- [ ] Security score
+
+### Architectural rule — binding
+
+```
+Security data must enter the same Evidence architecture.
+```
+
+Forbidden design:
+
+```
+❌  Security Engine → isolated storage → later migration to Evidence Store
+```
+
+**Exit criteria:** every stored fact traces to source + tier + `data_as_of` ·
+snapshots reproduce identical inputs · conflicts surface rather than average ·
+every security finding is queryable as evidence · Scam Gate can override with
+published reasoning · false-positive rate measured on a known-good sample.
 
 ---
 
@@ -74,8 +231,7 @@ snapshots reproduce identical inputs; conflicts surface rather than average.
 - [ ] Basic valuation
 - [ ] Evidence-backed asset report
 
-**Exit criteria:** a full asset report generated where every claim carries an
-`evidence_id`.
+**Exit criteria:** a full asset report where every claim carries an `evidence_id`.
 
 ---
 
@@ -90,8 +246,8 @@ snapshots reproduce identical inputs; conflicts surface rather than average.
 - [ ] Structured output + Zod validation
 - [ ] Verdict
 
-**Exit criteria:** decisions come from the policy engine, not the model; G-3
-(price-only never → `EXIT`) is test-covered.
+**Exit criteria:** decisions come from the policy engine, not the model;
+guardrail G-3 (price-only never → `EXIT`) is test-covered.
 
 ---
 
@@ -103,8 +259,7 @@ snapshots reproduce identical inputs; conflicts surface rather than average.
 - [ ] Explain score changes
 - [ ] Thesis status + trend
 
-**Exit criteria:** Question 17 — *what changed since last time?* — is answerable
-with a diff.
+**Exit criteria:** Question 17 — *what changed since last time?* — answerable as a diff.
 
 ---
 
@@ -113,7 +268,7 @@ with a diff.
 - [ ] Deeper on-chain · revenue/economics · developer activity
 - [ ] Whale intelligence · exchange flows · smart money *(where reliable)*
 - [ ] Unlock intelligence · advanced valuation
-- [ ] Community/sentiment *(low evidence authority — Tier 4)*
+- [ ] Community/sentiment *(Tier 4 — low evidence authority)*
 
 ---
 
@@ -125,7 +280,7 @@ with a diff.
 - [ ] Thesis health distribution
 - [ ] Portfolio-level actions
 
-**Exit criteria:** asset decisions and portfolio actions are emitted separately.
+**Exit criteria:** asset decisions and portfolio actions emitted separately.
 
 ---
 
@@ -140,28 +295,48 @@ with a diff.
 
 ## Phase 9 — Optimization
 
-- [ ] Allocation optimization
-- [ ] Portfolio risk models
-- [ ] Orbiter-style capabilities *where justified*
+**Status: `DEFERRED`**
 
-> **Note:** the source brief for this roadmap was truncated mid-sentence during
-> Phase 9 ("advan…"). Phase 9 content above reflects only what was received and
-> should be confirmed before work begins.
+### Scope (future)
+
+- [ ] Portfolio allocation optimization
+- [ ] Portfolio risk models
+- [ ] Efficient frontier *where appropriate*
+- [ ] HRP (Hierarchical Risk Parity)
+- [ ] Risk parity
+- [ ] Orbiter-style capabilities *where justified*
+- [ ] Advanced scenario analysis
+- [ ] Portfolio stress testing
+
+### Deferral rationale
+
+None of these are MVP blockers. All of them require reliable covariance
+estimates, and crypto correlations are unstable and regime-dependent. Applying
+them before the system has a track record produces confident allocations resting
+on unstable inputs.
+
+```
+No Phase 9 item is an MVP blocker.
+```
 
 ---
 
 ## Dependency graph
 
 ```
-Phase 0 ──► Phase 1 ──► Phase 2 ──► Phase 3 ──► Phase 4 ──► Phase 5
-   │                        │                       │
-   │                        └───────────────────────┤
-   └────────────────────────────────────────────────┘
-                                                     │
-                            Phase 6 ◄────────────────┘
-                                │
-                            Phase 7 ──► Phase 8 ──► Phase 9
+Phase 0A ────────────────────────► deployable product (independent path)
+    │
+    └──► Phase 0B ──► Phase 1 ──► Phase 2 ──► Phase 3 ──► Phase 4 ──► Phase 5
+                                                  │                      │
+                                                  └──────────────────────┤
+                                                                         ▼
+                                            Phase 6 ──► Phase 7 ──► Phase 8
+                                                                         │
+                                                                         ▼
+                                                              Phase 9 (DEFERRED)
 ```
 
-Asset Identity (Phase 0) and Evidence (Phase 2) are the two hard prerequisites —
-nothing downstream is meaningful without them.
+**0A is independent.** It can complete, ship, and operate while 0B has not
+started. Everything from 0B onward is strictly sequential: Asset Identity and
+Evidence are the two hard prerequisites, and nothing downstream is meaningful
+without them.

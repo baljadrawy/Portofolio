@@ -6,6 +6,27 @@
 
 ---
 
+## Gate status
+
+```
+Current Gate : DOCUMENTATION CORRECTION GATE
+Next Gate    : PHASE 0A — PRODUCTION BASELINE
+```
+
+```
+Phase 0A implementation has not started yet.
+```
+
+> ### DESIGN/AUDIT APPROVED ≠ IMPLEMENTATION COMPLETE
+
+The Phase 0A pre-execution audit passed. **Nothing has been built.** The
+`portfolio` database, the `portfolio_app` role, `.env.production`, the
+`Dockerfile`, the container, the `/health` endpoint, and the node-postgres driver
+swap **do not exist**. See [`ROADMAP.md`](./ROADMAP.md) for the full
+not-yet-created inventory.
+
+---
+
 ## What this is
 
 `baljadrawy/Portofolio` is today a working **cryptocurrency portfolio tracker**.
@@ -24,9 +45,9 @@ Platform** — a system that answers, continuously and with auditable evidence:
 
 | # | Document | Read it for |
 |---|---|---|
-| 00 | [Current State Audit](./00-CURRENT-STATE-AUDIT.md) | **Start here.** What actually exists today, verified |
+| 00 | [Current State Audit](./00-CURRENT-STATE-AUDIT.md) | **Start here.** Verified reality — *historical snapshot* |
 | 01 | [Vision and Principles](./01-VISION-AND-PRINCIPLES.md) | The 18 questions, the pipeline, the invariants |
-| 02 | [Canonical Asset Identity](./02-ASSET-IDENTITY.md) | **Phase 0 blocker.** Why `symbol` is not an identity |
+| 02 | [Canonical Asset Identity](./02-ASSET-IDENTITY.md) | **Phase 0B.** Blocks Intelligence, *not* deployment |
 | 03 | [Evidence Platform](./03-EVIDENCE-PLATFORM.md) | The evidence contract, dedup, conflicts, provenance |
 | 04 | [Source Quality and Freshness](./04-SOURCE-QUALITY-AND-FRESHNESS.md) | Tiers 1–5, freshness matrix, conflict resolution |
 | 05 | [Event Intelligence](./05-EVENT-INTELLIGENCE.md) | Event store, **security incident attribution** |
@@ -37,7 +58,8 @@ Platform** — a system that answers, continuously and with auditable evidence:
 | 10 | [AI Provider Abstraction](./10-AI-PROVIDER-ABSTRACTION.md) | Provider interface, structured output |
 | 11 | [Portfolio Intelligence](./11-PORTFOLIO-INTELLIGENCE.md) | Asset decision vs. portfolio action, monitoring |
 | 12 | [External References](./12-EXTERNAL-REFERENCES.md) | Palisade, VerumTrade, openportfolio, analystOS, Orbiter |
-| — | [Roadmap](./ROADMAP.md) | Phases 0–9 with exit criteria |
+| — | [Roadmap](./ROADMAP.md) | Phases 0A–9 with exit criteria and gate status |
+| — | [Technical Debt](./TECHNICAL-DEBT.md) | **Living register.** Authoritative over doc 00 |
 | — | [ADRs](./adr/) | Decisions that require an ADR to change |
 
 ---
@@ -80,6 +102,22 @@ not check" is never rendered as "there is no problem".
 
 `HOLD` (asset) and `REDUCE EXPOSURE` (portfolio) can both be true at once.
 
+### 7. Asset Identity blocks Intelligence, not deployment
+
+```
+Canonical Asset Identity = BLOCKER BEFORE INVESTMENT INTELLIGENCE
+Canonical Asset Identity ≠ BLOCKER FOR CURRENT APPLICATION PRODUCTION DEPLOYMENT
+```
+
+### 8. Security data enters the Evidence architecture
+
+```
+Security findings ARE evidence.
+```
+
+No security-only datastore. Forbidden: `Security Engine → isolated storage →
+later migration to Evidence Store`.
+
 ---
 
 ## Locked contracts
@@ -111,6 +149,12 @@ Turning Intelligence off leaves a fully working tracker.
 
 ## Status
 
-These documents are **architecture contracts**, not implementation. No
-Intelligence feature has been built. See [Current State Audit](./00-CURRENT-STATE-AUDIT.md)
-for exactly what exists today.
+These documents are **architecture contracts, not implementation.**
+
+- No Intelligence feature has been built
+- No production deployment has been performed
+- No database, role, or container has been created
+
+See [Current State Audit](./00-CURRENT-STATE-AUDIT.md) for what existed at commit
+`2521133`, and [Technical Debt](./TECHNICAL-DEBT.md) for the current, maintained
+register.

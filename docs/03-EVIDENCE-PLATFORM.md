@@ -1,7 +1,13 @@
 # Evidence Platform
 
-> **Status:** Architecture contract. Phase 2.
+> **Status:** Architecture contract.
+> **Phased delivery:** minimal Evidence Core + provenance contract in **Phase 1**;
+> full store, snapshots, conflict handling, and freshness enforcement in **Phase 2**.
 > **Governing rule:** `LLM interprets evidence. It does not manufacture evidence.`
+
+> **Security findings are evidence.** They are written into this store like any
+> other fact — never into a separate security-only datastore. See
+> `07-SECURITY-AND-SCAM-ENGINE.md` §0.
 
 ---
 

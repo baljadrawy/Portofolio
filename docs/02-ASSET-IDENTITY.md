@@ -1,10 +1,29 @@
 # Canonical Asset Identity
 
-> **Status:** Architecture contract. **Phase 0 — blocks all Intelligence work.**
+> **Status:** Architecture contract. **Phase 0B.**
 
 ---
 
-## 1. Why this is first
+## 0. Blocker scope — binding contract
+
+```
+Canonical Asset Identity = BLOCKER BEFORE INVESTMENT INTELLIGENCE
+Canonical Asset Identity ≠ BLOCKER FOR CURRENT APPLICATION PRODUCTION DEPLOYMENT
+```
+
+Both halves bind equally.
+
+| | |
+|---|---|
+| **Blocks** | Evidence attachment · Events · Research modules · Scoring · Decisions · Thesis Memory — every Intelligence phase |
+| **Does NOT block** | Phase 0A production baseline. The existing tracker runs on `symbol` today and continues to. Deploying it is not gated on this work. |
+
+Conflating the two would hold a shippable product hostage to a foundation only
+the Intelligence Layer needs. See `ROADMAP.md` for the 0A / 0B split.
+
+---
+
+## 1. Why this is first among Intelligence work
 
 Today (see `00-CURRENT-STATE-AUDIT.md` §3) an asset is a **free-text symbol
 string** on `holdings` and `transactions`. There is no asset entity.
@@ -192,7 +211,7 @@ The asset registry generalises that pattern to the asset level.
 
 ## 8. Migration path from today's model
 
-**Non-destructive and reversible.** No existing column is dropped in Phase 0.
+**Non-destructive and reversible.** No existing column is dropped in Phase 0B.
 
 ```
 Step 1  Create the asset registry tables (additive only)

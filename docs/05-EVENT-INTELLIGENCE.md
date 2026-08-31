@@ -1,6 +1,9 @@
 # Event Intelligence Model
 
 > **Status:** Architecture contract. Phase 2.
+>
+> Security incidents are events **and** evidence. They are stored here and in the
+> Evidence Store — never in a security-only datastore.
 
 ---
 

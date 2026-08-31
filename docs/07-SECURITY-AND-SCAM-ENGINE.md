@@ -1,6 +1,37 @@
 # Security and Scam Engine
 
-> **Status:** Architecture contract. Phase 1.
+> **Status:** Architecture contract.
+> **Phased delivery:** `SecurityProvider` abstraction, Palisade feasibility, and
+> the security output contract land in **Phase 1**. The engine itself — contract
+> assessment, honeypot/rug indicators, incident handling, Scam Gate,
+> false-positive safeguards — lands in **Phase 2**, alongside the Evidence Store
+> it writes into.
+
+---
+
+## 0. Security data enters the Evidence architecture
+
+```
+Security findings ARE evidence.
+```
+
+Every security finding — a contract flag, a honeypot result, a liquidity lock
+status, an incident — is written to the **Evidence Store** with full provenance:
+source, tier, `retrieved_at`, `data_as_of`, confidence, hash.
+
+### Forbidden design
+
+```
+❌  Security Engine → isolated storage → later migration to Evidence Store
+```
+
+A security silo would have to be migrated into the Evidence Store later, meaning
+the work is paid for twice and conflict/freshness handling is duplicated. This is
+why the Security Engine ships in Phase 2 **with** the Evidence platform, rather
+than ahead of it.
+
+What Phase 1 delivers is the **interface and the output contract**, so that the
+first security finding ever produced is already shaped as evidence.
 
 ---
 
@@ -40,7 +71,7 @@ detect:
 
 ```
 SymbolMapper (existing)        →  display hygiene, cheap, name-based
-Security Engine (Phase 1)      →  investment safety, contract-based, evidence-backed
+Security Engine (Phase 2)      →  investment safety, contract-based, evidence-backed
 ```
 
 They are complementary layers, not competitors. The Security Engine never
@@ -50,7 +81,7 @@ replaces or weakens the existing filter.
 
 ## 2. Security assessment surface
 
-The Phase 1 layer must be able to assess:
+The security layer must be able to assess:
 
 | Category | Checks |
 |---|---|

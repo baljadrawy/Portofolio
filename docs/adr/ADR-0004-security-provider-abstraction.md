@@ -1,6 +1,6 @@
 # ADR-0004 — Security provider abstraction
 
-**Status:** ACCEPTED · **Date:** 2026-08-29 · **Phase:** 1
+**Status:** ACCEPTED · **Date:** 2026-08-29 · **Phase:** 1–2
 
 ## Context
 
@@ -21,11 +21,21 @@ with measured false-positive behaviour, not assumed.
 The `SymbolMapper` filter is retained unchanged as a separate, complementary
 layer.
 
+## Phase placement (corrected 2026-08-31)
+
+The abstraction and the Palisade feasibility evaluation land in **Phase 1**
+(Intelligence Foundations). The Security **Engine** lands in **Phase 2**,
+together with the Evidence Store it writes into.
+
+Rationale: security findings are evidence. Shipping a full engine before the
+evidence platform would create a security data silo requiring later migration.
+Phase 1 therefore delivers the interface and output contract only.
+
 ## Consequences
 
 **Enables:** provider substitution without touching consumers · multiple
-providers with corroboration · Phase 1 proceeds without blocking on Palisade
-evaluation.
+providers with corroboration · Palisade evaluation proceeds in Phase 1 without
+blocking, and its verdict is known before Phase 2 builds on it.
 
 **Costs:** an interface broad enough for several providers · adapter maintenance
 · possible lowest-common-denominator capability surface.

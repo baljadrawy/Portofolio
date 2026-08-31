@@ -1,6 +1,6 @@
 # ADR-0002 — Canonical asset identity before intelligence
 
-**Status:** ACCEPTED · **Date:** 2026-08-29 · **Phase:** 0
+**Status:** ACCEPTED · **Date:** 2026-08-29 · **Phase:** 0B
 
 ## Context
 
@@ -15,7 +15,11 @@ impersonating `USDC`.
 ## Decision
 
 Build an **asset registry** keyed on `(network, contract_address)` — never on
-symbol — before any Intelligence feature. Add `asset_lineage` so rebrands and
+symbol — before any Intelligence feature.
+
+**Scope clarification:** this blocks Intelligence only. Phase 0A (production
+baseline) is explicitly **not** gated on it — the existing tracker runs on
+`symbol` and continues to. Add `asset_lineage` so rebrands and
 migrations preserve investment history. Add **economic exposure groups** so
 concentration is computed on real exposure.
 
@@ -27,7 +31,7 @@ and the running tracker is untouched.
 **Enables:** everything downstream. Evidence, events, theses, and decisions all
 key on `asset_id`.
 
-**Costs:** Phase 0 grows · a backfill producing many `UNRESOLVED` rows · dual-write
+**Costs:** Phase 0B is a distinct phase · a backfill producing many `UNRESOLVED` rows · dual-write
 period · resolution rules must be maintained.
 
 ## Alternatives rejected

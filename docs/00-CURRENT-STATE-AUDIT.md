@@ -1,6 +1,9 @@
 # Current State Audit
 
-> **Status:** Evidence-based snapshot of the repository as it exists today.
+> **Status:** **HISTORICAL SNAPSHOT** — frozen at the commit below.
+> **Living register:** technical debt now lives in
+> [`TECHNICAL-DEBT.md`](./TECHNICAL-DEBT.md). Where the two disagree, that file
+> is current and this one is history.
 > **Method:** Read-only inspection. No code was modified to produce this document.
 > **Commit audited:** `2521133` (2025-12-16)
 > **Audit date:** 2026-08-29
@@ -64,7 +67,7 @@ representing an asset, no contract address on a holding, no chain reference on a
 holding, no provider ID mapping. A holding does not know which chain it came from
 except transitively through its `connectionId`.
 
-This is the structural reason **Canonical Asset Identity is Phase 0 work and
+This is the structural reason **Canonical Asset Identity is Phase 0B work and
 blocks everything else**. See `02-ASSET-IDENTITY.md`.
 
 ---
@@ -181,7 +184,7 @@ standard server. Running against self-hosted PostgreSQL requires swapping the
 driver to `pg` + `drizzle-orm/node-postgres` — a two-line change in `db.ts`
 only. ORM, schema, and storage layer are unaffected.
 
-Recorded here as a known Phase 0 task. **Not performed in this documentation task.**
+Recorded here as a known Phase 0A task. **Not performed in this documentation task.**
 
 ---
 
@@ -196,27 +199,27 @@ Flagged so nobody later assumes production data is user-only.
 
 ---
 
-## 11. Technical debt observed (NOT fixed in this task)
+## 11. Technical debt observed
 
-| # | Item | Why it is debt |
-|---|---|---|
-| TD-01 | `package.json` name is `rest-express` | Scaffold default; unclear provenance |
-| TD-02 | `users` table is dead code | Declared legacy, unused, has plaintext `password` column |
-| TD-03 | No `/health` endpoint | Blocks container orchestration health checks |
-| TD-04 | No versioned migrations | `push` mode is unsafe once production data exists |
-| TD-05 | Neon driver blocks self-hosting | See §9 |
-| TD-06 | Demo seed runs in production path | Pollutes a real deployment's first boot |
-| TD-07 | `symbol` is untyped free text | Root cause of identity ambiguity |
-| TD-08 | Replit-specific Vite plugins in build | Coupling to a platform being migrated away from |
-| TD-09 | No test suite present | No regression safety net for Intelligence work |
+> **Moved.** The debt items first recorded here (TD-01 … TD-10) now live in the
+> living register: **[`TECHNICAL-DEBT.md`](./TECHNICAL-DEBT.md)**.
+>
+> That file is authoritative. It carries severity, blocker status, target phase,
+> and current status per item, and it is updated as work proceeds. This snapshot
+> is not maintained.
 
----
+**Correction applied 2026-08-31:** TD-02 was originally worded *"`users` table is
+dead code with a plaintext `password` column"*. The recorded evidence supports
+only that a `text` column named `password` exists — which is also the normal
+storage type for a password **hash**. The claim of plaintext storage was not
+evidenced and has been downgraded to *verification required* in the register.
 
 ## 12. What this means for the roadmap
 
 1. **Nothing needs to be undone.** The tracker is sound; Intelligence is additive.
-2. **Asset identity is the true blocker.** Every Intelligence contract keys on
-   `asset_id`, which does not yet exist.
+2. **Asset identity blocks Intelligence — not deployment.** Every Intelligence
+   contract keys on `asset_id`, which does not yet exist. Phase 0A (production
+   baseline) can still reach PASS without it. See `ROADMAP.md`.
 3. **The Evidence Store has no precursor.** It is built from zero — an advantage,
    since no legacy shape constrains it.
 4. **Existing scam filtering is kept and wrapped**, not replaced.

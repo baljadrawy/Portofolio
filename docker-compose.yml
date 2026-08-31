@@ -1,0 +1,36 @@
+# Portfolio — Phase 0A production baseline.
+#
+# Deliberately contains NO postgres service. The database is the pre-existing
+# shared-postgres container, reached over the external shared-db-network.
+# This compose file must never own the lifecycle of shared PostgreSQL.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: portfolio-app:latest
+    container_name: portfolio-app
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      TZ: Asia/Riyadh
+    ports:
+      # 3002 is taken by tamrini-app (network_mode: host) — verified with
+      # `ss -lntp`, which docker ps does not reveal. 3003 verified free.
+      - "3003:3000"
+    networks:
+      - shared-db
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  shared-db:
+    name: shared-db-network
+    external: true

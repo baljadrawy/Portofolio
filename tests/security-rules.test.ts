@@ -45,10 +45,18 @@ test("proxy detection covers the legacy slot, not only EIP-1967", () => {
   assert.equal(usdcLike.implementation, "0x43506849d7c04f9138d1a2050bbf3a0c054402dd");
 });
 
-test("no known proxy pattern means not-detected, not proven-absent", () => {
+test("no known proxy pattern means not-detected, never proven-absent", () => {
   const r = detectProxy({ eip1967: "0x0", zeppelin: "0x0" });
+  assert.equal(r.detection, "NO_KNOWN_PROXY_PATTERN_DETECTED");
   assert.equal(r.isProxy, false);
-  assert.equal(r.pattern, null);   // pattern null records that nothing matched
+  assert.equal(r.pattern, null);
+  // The patterns actually examined are recorded, so the claim stays bounded.
+  assert.deepEqual(r.patternsChecked, ["EIP-1967", "zeppelinos"]);
+});
+
+test("a detected proxy is labelled as a detection, not an exhaustive verdict", () => {
+  const r = detectProxy({ zeppelin: "0x00000000000000000000000043506849d7c04f9138d1a2050bbf3a0c054402dd" });
+  assert.equal(r.detection, "KNOWN_PROXY_PATTERN_DETECTED");
 });
 
 test("zero slot and renounced ownership", () => {
@@ -73,7 +81,7 @@ test("core capabilities differ per network family", () => {
 test("native assets require only chain-level capabilities", () => {
   const native = coreCapabilitiesFor("evm", true);
   assert.deepEqual(native, ["KNOWN_CRITICAL_EXPLOIT"]);
-  assert.ok(!native.includes("CONTRACT_VERIFIED"), "a native asset has no contract");
+  assert.ok(!native.includes("CONTRACT_CODE_PRESENT"), "a native asset has no contract");
 });
 
 test("every capability declares false-positive sensitivity", () => {

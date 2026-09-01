@@ -6,6 +6,7 @@ import { GoPlusAdapter } from "../server/services/security/goplus";
 import { DirectChainAdapter } from "../server/services/security/direct-chain";
 import { InternalRulesAdapter, type CuratedIncident } from "../server/services/security/internal-rules";
 import { observationsToEvidence } from "../server/services/security-provider";
+import { incidentCoverageFrom, incidentCoverageCountsAsChecked, PRODUCTION_PROVIDER_KEYS } from "../shared/security-rules";
 
 const EVM = { networkFamily: "evm" as const, chainId: 1, contractAddress: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" };
 
@@ -82,12 +83,39 @@ test("non-numeric tax values are dropped, not coerced to zero", () => {
 
 // ── Internal incident registry ──────────────────────────────────────────────
 
-test("empty registry reports no incident but declares its caveat", async () => {
-  const r = await new InternalRulesAdapter([]).assess(EVM);
-  assert.equal(r.status, "OK");
-  const o = r.observations[0];
-  assert.equal(o.normalized, false);
-  assert.match(String((o.raw as any).coverageCaveat), /absence is not proof of absence/);
+test("EMPTY registry yields COVERAGE_UNKNOWN, never a positive assurance", () => {
+  // The locked rule: absence from an incomplete registry is not verified absence.
+  assert.equal(
+    incidentCoverageFrom({ registrySize: 0, coverageScopeDeclared: false, assetInScope: false, hasUnresolvedCritical: false }),
+    "COVERAGE_UNKNOWN",
+  );
+});
+
+test("COVERAGE_UNKNOWN does not count as a completed check", () => {
+  assert.equal(incidentCoverageCountsAsChecked("COVERAGE_UNKNOWN"), false);
+  assert.equal(incidentCoverageCountsAsChecked("VERIFIED_NO_KNOWN_CRITICAL_INCIDENT"), true);
+  assert.equal(incidentCoverageCountsAsChecked("KNOWN_CRITICAL_INCIDENT"), true);
+});
+
+test("a declared scope with a non-empty registry can assert verified absence", () => {
+  assert.equal(
+    incidentCoverageFrom({ registrySize: 5, coverageScopeDeclared: true, assetInScope: true, hasUnresolvedCritical: false }),
+    "VERIFIED_NO_KNOWN_CRITICAL_INCIDENT",
+  );
+});
+
+test("an out-of-scope asset stays COVERAGE_UNKNOWN even with a populated registry", () => {
+  assert.equal(
+    incidentCoverageFrom({ registrySize: 5, coverageScopeDeclared: true, assetInScope: false, hasUnresolvedCritical: false }),
+    "COVERAGE_UNKNOWN",
+  );
+});
+
+test("an unresolved critical incident is reported regardless of scope", () => {
+  assert.equal(
+    incidentCoverageFrom({ registrySize: 1, coverageScopeDeclared: false, assetInScope: false, hasUnresolvedCritical: true }),
+    "KNOWN_CRITICAL_INCIDENT",
+  );
 });
 
 test("a resolved historical incident does not assert present risk", async () => {
@@ -98,7 +126,7 @@ test("a resolved historical incident does not assert present risk", async () => 
     reference: "https://example.test/report", unresolved: false,
   };
   const r = await new InternalRulesAdapter([inc]).assess(EVM);
-  assert.equal(r.observations[0].normalized, false, "resolved incident must not assert current risk");
+  assert.notEqual(r.observations[0].normalized, "KNOWN_CRITICAL_INCIDENT", "resolved incident must not assert current risk");
   const matches = (r.observations[0].raw as any).matches;
   assert.equal(matches.length, 1, "but the historical fact is still recorded");
   assert.equal(matches[0].occurredAt, "2026-01-01");
@@ -110,7 +138,7 @@ test("an unresolved critical incident does assert present risk", async () => {
     title: "active exploit", occurredAt: "2026-08-01", severity: "CRITICAL",
     reference: "https://example.test/live", unresolved: true,
   };
-  assert.equal((await new InternalRulesAdapter([inc]).assess(EVM)).observations[0].normalized, true);
+  assert.equal((await new InternalRulesAdapter([inc]).assess(EVM)).observations[0].normalized, "KNOWN_CRITICAL_INCIDENT");
 });
 
 test("registry matching respects per-family address casing", async () => {
@@ -120,10 +148,10 @@ test("registry matching respects per-family address casing", async () => {
     severity: "CRITICAL", reference: "r", unresolved: true,
   };
   const hit = await new InternalRulesAdapter([inc]).assess({ networkFamily: "solana", contractAddress: mint });
-  assert.equal(hit.observations[0].normalized, true);
+  assert.equal(hit.observations[0].normalized, "KNOWN_CRITICAL_INCIDENT");
   // Lowercasing a Solana mint yields a DIFFERENT address and must not match.
   const miss = await new InternalRulesAdapter([inc]).assess({ networkFamily: "solana", contractAddress: mint.toLowerCase() });
-  assert.equal(miss.observations[0].normalized, false);
+  assert.notEqual(miss.observations[0].normalized, "KNOWN_CRITICAL_INCIDENT");
 });
 
 // ── Evidence normalisation ──────────────────────────────────────────────────
@@ -148,4 +176,22 @@ test("no vendor name leaks into the evidence field names", () => {
   for (const k of Object.keys(ev[0])) {
     assert.ok(!/goplus|palisade|vendor/i.test(k), `vendor leaked: ${k}`);
   }
+});
+
+
+// ── Production provider set (REMEDIATION C) ─────────────────────────────────
+
+test("GoPlus is NOT in the production provider set", () => {
+  // Its licence restricts commercial use and is silent on caching/retention.
+  // Silence is not permission, and the Evidence Store caches by design.
+  assert.ok(!(PRODUCTION_PROVIDER_KEYS as readonly string[]).includes("goplus"));
+  assert.deepEqual([...PRODUCTION_PROVIDER_KEYS], ["direct-chain", "internal-rules"]);
+});
+
+test("CONTRACT_CODE_PRESENT claims only what eth_getCode proves", () => {
+  // eth_getCode proves bytecode exists at the address. It says nothing about
+  // whether source was published or verified on an explorer.
+  const d = new DirectChainAdapter();
+  assert.ok(d.capabilities().observationTypes.includes("CONTRACT_CODE_PRESENT"));
+  assert.ok(!(d.capabilities().observationTypes as string[]).includes("SOURCE_CODE_VERIFIED"));
 });

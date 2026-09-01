@@ -6,7 +6,8 @@ import { GoPlusAdapter } from "../server/services/security/goplus";
 import { DirectChainAdapter } from "../server/services/security/direct-chain";
 import { InternalRulesAdapter, type CuratedIncident } from "../server/services/security/internal-rules";
 import { observationsToEvidence } from "../server/services/security-provider";
-import { incidentCoverageFrom, incidentCoverageCountsAsChecked, PRODUCTION_PROVIDER_KEYS } from "../shared/security-rules";
+import { incidentAssuranceCredit, incidentBlocksClear, PRODUCTION_PROVIDER_KEYS,
+  type IncidentIntelligenceStatus } from "../shared/security-rules";
 
 const EVM = { networkFamily: "evm" as const, chainId: 1, contractAddress: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" };
 
@@ -83,41 +84,77 @@ test("non-numeric tax values are dropped, not coerced to zero", () => {
 
 // ── Internal incident registry ──────────────────────────────────────────────
 
-test("EMPTY registry yields COVERAGE_UNKNOWN, never a positive assurance", () => {
-  // The locked rule: absence from an incomplete registry is not verified absence.
-  assert.equal(
-    incidentCoverageFrom({ registrySize: 0, coverageScopeDeclared: false, assetInScope: false, hasUnresolvedCritical: false }),
-    "COVERAGE_UNKNOWN",
-  );
+// ── Phase 2E contract correction ────────────────────────────────────────────
+// The five tests that stood here pinned the previous contract, in which the
+// internal registry answered a mandatory CORE capability and could assert
+// VERIFIED_NO_KNOWN_CRITICAL_INCIDENT for an in-scope asset. Phase 2D showed
+// that contract cannot be honoured by any source: exhaustive negative incident
+// coverage is an open-world problem. The tests below pin the corrected
+// contract, which is strictly more conservative — it removed the only path
+// that ever produced a positive assurance from an absence.
+
+test("an empty registry produces NO observation at all, not a clean verdict", async () => {
+  const adapter = new InternalRulesAdapter([], []);
+  const r = await adapter.assess({ networkFamily: "evm", chainId: 1, contractAddress: "0xabc" } as any);
+  assert.equal(r.status, "OK");
+  assert.equal(r.observations.length, 0,
+    "silence must not be encoded as an observation — there is no fact to report");
 });
 
-test("COVERAGE_UNKNOWN does not count as a completed check", () => {
-  assert.equal(incidentCoverageCountsAsChecked("COVERAGE_UNKNOWN"), false);
-  assert.equal(incidentCoverageCountsAsChecked("VERIFIED_NO_KNOWN_CRITICAL_INCIDENT"), true);
-  assert.equal(incidentCoverageCountsAsChecked("KNOWN_CRITICAL_INCIDENT"), true);
+test("no assurance credit exists for any incident status", () => {
+  const all: IncidentIntelligenceStatus[] = [
+    "ACTIVE_CRITICAL_INCIDENT_FOUND", "INCIDENT_CONFLICT_UNRESOLVED",
+    "NO_ACTIVE_CRITICAL_INCIDENT_FOUND_IN_QUERIED_SOURCES",
+    "NOT_AVAILABLE", "SOURCE_FAILED", "NOT_APPLICABLE",
+  ];
+  // Including the one that means "we looked and found nothing". Especially it.
+  for (const st of all) assert.equal(incidentAssuranceCredit(st), 0, st);
 });
 
-test("a declared scope with a non-empty registry can assert verified absence", () => {
-  assert.equal(
-    incidentCoverageFrom({ registrySize: 5, coverageScopeDeclared: true, assetInScope: true, hasUnresolvedCritical: false }),
-    "VERIFIED_NO_KNOWN_CRITICAL_INCIDENT",
-  );
+test("only a found incident blocks CLEAR; silence and failure never do", () => {
+  assert.equal(incidentBlocksClear("ACTIVE_CRITICAL_INCIDENT_FOUND"), true);
+  assert.equal(incidentBlocksClear("INCIDENT_CONFLICT_UNRESOLVED"), true);
+  assert.equal(incidentBlocksClear("NOT_AVAILABLE"), false);
+  assert.equal(incidentBlocksClear("SOURCE_FAILED"), false);
+  assert.equal(incidentBlocksClear("NO_ACTIVE_CRITICAL_INCIDENT_FOUND_IN_QUERIED_SOURCES"), false);
 });
 
-test("an out-of-scope asset stays COVERAGE_UNKNOWN even with a populated registry", () => {
-  assert.equal(
-    incidentCoverageFrom({ registrySize: 5, coverageScopeDeclared: true, assetInScope: false, hasUnresolvedCritical: false }),
-    "COVERAGE_UNKNOWN",
-  );
+test("a matching unresolved critical incident is reported as active", async () => {
+  const adapter = new InternalRulesAdapter([{
+    networkFamily: "evm", chainId: 1, addressKey: "0xbad",
+    title: "drained via reentrancy", occurredAt: "2025-01-01",
+    severity: "CRITICAL", reference: "https://example.test/advisory", unresolved: true,
+  }], []);
+  const r = await adapter.assess({ networkFamily: "evm", chainId: 1, contractAddress: "0xBAD" } as any);
+  assert.equal(r.observations.length, 1);
+  assert.equal(r.observations[0].normalized, "ACTIVE_CRITICAL_INCIDENT_FOUND");
 });
 
-test("an unresolved critical incident is reported regardless of scope", () => {
-  assert.equal(
-    incidentCoverageFrom({ registrySize: 1, coverageScopeDeclared: false, assetInScope: false, hasUnresolvedCritical: true }),
-    "KNOWN_CRITICAL_INCIDENT",
-  );
+test("a resolved historical incident stays on record without claiming active risk", async () => {
+  const adapter = new InternalRulesAdapter([{
+    networkFamily: "evm", chainId: 1, addressKey: "0xold",
+    title: "exploited and since patched", occurredAt: "2024-03-02",
+    severity: "CRITICAL", reference: "https://example.test/postmortem", unresolved: false,
+  }], []);
+  const r = await adapter.assess({ networkFamily: "evm", chainId: 1, contractAddress: "0xOLD" } as any);
+  // The incident fact survives — it happened, permanently. Its CURRENT impact
+  // is a separate axis and is not asserted to be critical.
+  assert.equal((r.observations[0].raw as any).matches.length, 1);
+  assert.notEqual(r.observations[0].normalized, "ACTIVE_CRITICAL_INCIDENT_FOUND");
 });
 
+test("a Solana mint is matched case-sensitively", async () => {
+  const mint = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+  const adapter = new InternalRulesAdapter([{
+    networkFamily: "solana", addressKey: mint, title: "t", occurredAt: "2025-01-01",
+    severity: "CRITICAL", reference: "https://example.test/x", unresolved: true,
+  }], []);
+  const hit = await adapter.assess({ networkFamily: "solana", contractAddress: mint } as any);
+  assert.equal(hit.observations.length, 1);
+  // Lowercasing a base58 mint would stop it matching itself.
+  const miss = await adapter.assess({ networkFamily: "solana", contractAddress: mint.toLowerCase() } as any);
+  assert.equal(miss.observations.length, 0);
+});
 test("a resolved historical incident does not assert present risk", async () => {
   // Event Fact vs Current Assessment: the exploit happened; it is no longer live.
   const inc: CuratedIncident = {
@@ -126,7 +163,7 @@ test("a resolved historical incident does not assert present risk", async () => 
     reference: "https://example.test/report", unresolved: false,
   };
   const r = await new InternalRulesAdapter([inc]).assess(EVM);
-  assert.notEqual(r.observations[0].normalized, "KNOWN_CRITICAL_INCIDENT", "resolved incident must not assert current risk");
+  assert.notEqual(r.observations[0].normalized, "ACTIVE_CRITICAL_INCIDENT_FOUND", "resolved incident must not assert current risk");
   const matches = (r.observations[0].raw as any).matches;
   assert.equal(matches.length, 1, "but the historical fact is still recorded");
   assert.equal(matches[0].occurredAt, "2026-01-01");
@@ -138,7 +175,7 @@ test("an unresolved critical incident does assert present risk", async () => {
     title: "active exploit", occurredAt: "2026-08-01", severity: "CRITICAL",
     reference: "https://example.test/live", unresolved: true,
   };
-  assert.equal((await new InternalRulesAdapter([inc]).assess(EVM)).observations[0].normalized, "KNOWN_CRITICAL_INCIDENT");
+  assert.equal((await new InternalRulesAdapter([inc]).assess(EVM)).observations[0].normalized, "ACTIVE_CRITICAL_INCIDENT_FOUND");
 });
 
 test("registry matching respects per-family address casing", async () => {
@@ -148,10 +185,12 @@ test("registry matching respects per-family address casing", async () => {
     severity: "CRITICAL", reference: "r", unresolved: true,
   };
   const hit = await new InternalRulesAdapter([inc]).assess({ networkFamily: "solana", contractAddress: mint });
-  assert.equal(hit.observations[0].normalized, "KNOWN_CRITICAL_INCIDENT");
+  assert.equal(hit.observations[0].normalized, "ACTIVE_CRITICAL_INCIDENT_FOUND");
   // Lowercasing a Solana mint yields a DIFFERENT address and must not match.
+  // After Phase 2E a non-match emits no observation at all rather than a
+  // "clean" verdict, so the assertion is on silence.
   const miss = await new InternalRulesAdapter([inc]).assess({ networkFamily: "solana", contractAddress: mint.toLowerCase() });
-  assert.notEqual(miss.observations[0].normalized, "KNOWN_CRITICAL_INCIDENT");
+  assert.equal(miss.observations.length, 0);
 });
 
 // ── Evidence normalisation ──────────────────────────────────────────────────

@@ -347,8 +347,14 @@ export class SellPathAdapter implements SecurityProvider {
       deductionAmount: deduction.toString(),
       deductionRatio: ratio,
       severity,
-      pairBalanceBefore: before.toString(),
-      pairBalanceAfter: after.toString(),
+      // The absolute pool balances are deliberately NOT here. They move every
+      // block, and this payload is hashed for deduplication — including them
+      // made an unchanged fact hash differently on every read, so the same
+      // measurement accumulated a new evidence row per block. The fact is
+      // "a 1,000,000-unit transfer arrived in full"; the pool's size is how it
+      // was measured, not what was learned. Their difference is already
+      // recorded above as amountReceived, which is the part that carries
+      // meaning and is stable across blocks.
       normalizerVersion: "deduction-probe-v1",
       // These are the paths this single measurement cannot see.
       knownFalseNegatives: [

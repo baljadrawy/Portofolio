@@ -3,7 +3,8 @@ import { evidenceService } from "../evidence";
 import { computeFreshness } from "@shared/evidence-rules";
 import {
   computeDisposition, coreCapabilitiesFor, SECURITY_POLICY_VERSION,
-  incidentCoverageCountsAsChecked,
+  type IncidentIntelligenceReport, type IncidentIntelligenceStatus,
+  NO_INCIDENT_LOOKUP,
 } from "@shared/security-rules";
 import {
   countsAsChecked, isPositiveDetection,
@@ -27,7 +28,14 @@ export interface SecurityAssessmentReport {
   assetId: string | null;
   disposition: SecurityDisposition;
   policyVersion: string;
+  /**
+   * DETERMINISTIC CORE checks only. Read this as "how much of what we can
+   * verify did we verify" — never as confidence, and never as a probability
+   * that the asset is safe.
+   */
   coverage: { required: number; checked: number; ratio: number; missing: SecurityCapability[] };
+  /** External incident intelligence, reported beside coverage and never inside it. */
+  incidentIntelligence: IncidentIntelligenceReport;
   capabilitiesChecked: SecurityCapability[];
   criticalFindings: Finding[];
   cautionFindings: Finding[];
@@ -39,6 +47,43 @@ export interface SecurityAssessmentReport {
   assessedAt: Date;
   /** Attribution strings required by the licence of any provider consulted. */
   attributions: string[];
+}
+
+/**
+ * Turns incident observations into a status. The critical property is what
+ * happens with an EMPTY input: NOT_AVAILABLE, zero assurance, non-blocking.
+ * No lookup happened, so there is nothing to report and nothing to credit.
+ */
+function summarizeIncidentIntelligence(obs: Array<{ providerKey: string; value: unknown }>): IncidentIntelligenceReport {
+  if (obs.length === 0) return NO_INCIDENT_LOOKUP;
+
+  const sourcesQueried = Array.from(new Set(obs.map((o) => o.providerKey)));
+  const values = obs.map((o) => o.value).filter((v): v is IncidentIntelligenceStatus => typeof v === "string");
+
+  if (values.includes("SOURCE_FAILED")) {
+    return { status: "SOURCE_FAILED", sourcesQueried, positiveFindings: 0, assuranceCredit: 0,
+      detail: "an incident source failed; failure is not an absence of incidents" };
+  }
+  if (values.includes("ACTIVE_CRITICAL_INCIDENT_FOUND")) {
+    return { status: "ACTIVE_CRITICAL_INCIDENT_FOUND", sourcesQueried,
+      positiveFindings: values.filter((v) => v === "ACTIVE_CRITICAL_INCIDENT_FOUND").length, assuranceCredit: 0,
+      detail: `unresolved critical incident reported by ${sourcesQueried.join(", ")}` };
+  }
+  // Sources disagreeing about whether a critical incident is live is itself a
+  // reason to withhold CLEAR — surfaced, never resolved to the calmer side.
+  if (values.includes("INCIDENT_CONFLICT_UNRESOLVED")) {
+    return { status: "INCIDENT_CONFLICT_UNRESOLVED", sourcesQueried, positiveFindings: 0, assuranceCredit: 0,
+      detail: "sources disagree on whether a critical incident remains unresolved" };
+  }
+  // A real lookup ran and found nothing active. Informational ONLY: it says
+  // the queried sources are silent, not that the world is.
+  return {
+    status: "NO_ACTIVE_CRITICAL_INCIDENT_FOUND_IN_QUERIED_SOURCES",
+    sourcesQueried,
+    positiveFindings: 0,
+    assuranceCredit: 0,
+    detail: `queried ${sourcesQueried.join(", ")}; no active critical incident in those sources — this is not verified absence`,
+  };
 }
 
 /** Maps an observation to a finding. Absent capability → no finding invented. */
@@ -140,10 +185,14 @@ export class SecurityAssessmentService {
       }
     }
 
-    const incidentObs = byCapability.get("KNOWN_CRITICAL_EXPLOIT") ?? [];
-    const incidentUsable = incidentObs.length > 0 &&
-      incidentObs.some((o: any) => incidentCoverageCountsAsChecked(o.value));
-    if (incidentObs.length > 0 && !incidentUsable) byCapability.delete("KNOWN_CRITICAL_EXPLOIT");
+    // External incident intelligence is lifted OUT of the capability map before
+    // coverage is counted. It is a different kind of knowledge (Phase 2E): its
+    // presence must not inflate a deterministic ratio and its silence must not
+    // deflate one. Silence is the common case and produces no observation at
+    // all, so the map usually has no entry to lift.
+    const incidentObs = (byCapability.get("KNOWN_CRITICAL_EXPLOIT") ?? []) as Obs[];
+    byCapability.delete("KNOWN_CRITICAL_EXPLOIT");
+    const incidentIntelligence = summarizeIncidentIntelligence(incidentObs);
 
     const capabilitiesChecked = Array.from(byCapability.keys()) as SecurityCapability[];
     const criticalFindings: Finding[] = [];
@@ -180,12 +229,6 @@ export class SecurityAssessmentService {
       const detail = `${positive.map((p) => p.providerKey).join(", ")} report ${cap}`;
 
       switch (cap) {
-        case "KNOWN_CRITICAL_EXPLOIT":
-          // Only an unresolved, in-scope incident is critical.
-          if ((obs as Obs[]).some((o) => o.value === "KNOWN_CRITICAL_INCIDENT")) {
-            criticalFindings.push(toFinding(cap, "CRITICAL", false, obs.length, freshness, freshnessBasis, [], "known unresolved critical incident"));
-          }
-          break;
         case "HONEYPOT_INDICATOR":
         case "SELL_RESTRICTION":
         case "BLACKLIST_CAPABILITY":
@@ -275,6 +318,7 @@ export class SecurityAssessmentService {
       conflicts,
       providerFailures: providerFailures.length,
       providersAttempted: providers.length,
+      incidentIntelligence,
     });
 
     const attributions = Array.from(
@@ -286,6 +330,7 @@ export class SecurityAssessmentService {
       disposition: disposition.disposition,
       policyVersion: SECURITY_POLICY_VERSION,
       coverage: disposition.coverage,
+      incidentIntelligence: disposition.incidentIntelligence,
       capabilitiesChecked,
       criticalFindings,
       cautionFindings,

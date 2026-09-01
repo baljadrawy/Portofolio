@@ -98,6 +98,7 @@ Launch happens when **all twelve** hold. Not when the backlog is empty.
 | 1 | Identifies the **correct asset** — not a symbol collision, not a scam impersonator |
 | 2 | Collects **trustworthy evidence** for it, with source and provenance |
 | 3 | Detects **critical security risk** — honeypot, mint authority, freeze, ownership |
+| 3b | **Surfaces a credible known critical incident when external research finds one** (see below) |
 | 4 | Assesses the **investment factors that can change ownership** |
 | 5 | Builds an **explainable thesis** |
 | 6 | Detects **thesis breakers** |
@@ -113,11 +114,37 @@ If all twelve hold, LAUNCH —
 even with dozens of enhancements still open.
 ```
 
+### Condition 3b — incident intelligence, stated precisely
+
+Split out in Phase 2E so it could not be quietly satisfied or quietly lost.
+
+**Required before launch:** when external research surfaces a credible known
+critical incident for an asset, the system must find it, attach it to the
+correct canonical asset, and let it veto CLEAR. This is Phase 3 work and it is
+tracked as **TD-40**, a `PRE-LAUNCH BLOCKER`.
+
+**NOT required, ever:** proving that no incident exists. That was the original
+shape of the requirement and it is not satisfiable — no source enumerates every
+incident, so the check never completes and CLEAR becomes unreachable for
+everything. Phase 2D measured this across seven source families; Phase 2E
+corrected the contract. TD-27 records both.
+
+The distinction in one line:
+
+```
+find an incident when one is findable   →  REQUIRED before launch
+prove no incident exists anywhere       →  NOT REQUIRED, and not possible
+```
+
+Phase 2 owns the mechanism — a found incident vetoes CLEAR, implemented and
+tested. Phase 3 owns acquiring the source that finds them.
+
 ### What the gate deliberately does NOT require
 
 - Portfolio-wide optimisation
 - Continuous monitoring or alerting
 - Multi-provider security consensus
+- Proof that an asset has never had a security incident
 - RAG, vector search, or document ingestion
 - Price forecasting or scenario modelling
 - A rich dashboard

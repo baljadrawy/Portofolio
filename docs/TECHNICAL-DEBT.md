@@ -5,7 +5,7 @@
 > `00-CURRENT-STATE-AUDIT.md` is a **historical snapshot** taken at commit
 > `2521133`. When the two disagree, **this file is current**.
 
-**Last updated:** 2026-09-01 (Phase 2D — TD-27 re-evaluated, still open)
+**Last updated:** 2026-09-01 (Phase 2E — TD-27 resolved by contract correction; TD-40 opened)
 
 ---
 
@@ -58,7 +58,8 @@ Contract: [`CORE-LAUNCH-SCOPE.md`](./CORE-LAUNCH-SCOPE.md).
 
 ```
 PRE-LAUNCH BLOCKER      : 2   TD-24 (market sources — become CORE in Phase 3)
-                              TD-27 (empty incident registry blocks every CLEAR)
+                              TD-40 (external incident intelligence — Phase 3)
+                              [TD-27 RESOLVED by contract correction, Phase 2E]
 PRE-LAUNCH NON-BLOCKER  : 9   TD-09, TD-23, TD-31, TD-33, TD-34, TD-35, TD-38, TD-39, TD-28*
 POST-LAUNCH             : 15
 RESOLVED                : 12
@@ -524,68 +525,97 @@ table is genuinely unreferenced and removing it.
 
 ---
 
-### TD-27 — KNOWN_CRITICAL_EXPLOIT has no source with usable coverage
+### TD-27 — RESOLVED BY CONTRACT CORRECTION
 
 | Field | Value |
 |---|---|
-| **Title** | No legally usable incident source declares coverage over the asset class |
-| **Class** | 🔴 **`PRE-LAUNCH BLOCKER`** |
-| **Status** | **OPEN — blocked on a source, not on engineering** |
-| **Last evaluated** | 2026-09-01 (Phase 2D) |
+| **Title** | `KNOWN_CRITICAL_EXPLOIT` was modelled as a deterministic CORE capability requiring proof of absence |
+| **Class** | ✅ **RESOLVED — Phase 2E** |
+| **Resolution** | Contract correction, not a source integration |
 
-With TD-32 closed, this is the only capability standing between any asset and a
-CLEAR disposition. The registry is empty and declares no coverage scope, so
-`KNOWN_CRITICAL_EXPLOIT` always returns `COVERAGE_UNKNOWN`, which is not a
-completed check.
+**The debt was never the missing source. It was the contract.**
 
-**The semantics are correct and must not be changed.** An empty registry must
-not assert safety. The debt is the missing source, not the model.
+`KNOWN_CRITICAL_EXPLOIT` sat in the capability matrix beside
+`CONTRACT_CODE_PRESENT` and `SELL_TAX`, and inherited their rule: a CORE
+capability must be *completed* before CLEAR is possible. For a chain read that
+rule is sound — the scope is knowable, so "we looked and found nothing" is a
+real result. For external incident intelligence it is not satisfiable by
+anything. No source enumerates every incident that has ever occurred, so no
+lookup completes, so `COVERAGE_UNKNOWN` was permanent and CLEAR was
+unreachable for every asset on every chain.
 
-#### Why Phase 2D did not close it
+Phase 2D proved this empirically rather than by argument: seven source families
+evaluated, every one failing on licence, coverage, identity or resolution
+semantics. The most promising — projects' own GitHub advisories — was measured
+at **zero advisories** across Chainlink, Uniswap, Aave, Compound and Circle.
 
-Seven source families were evaluated (full table and licence quotations in
-[`13-DATA-GOVERNANCE.md`](./13-DATA-GOVERNANCE.md)). Every one failed at least
-one of the three tests a source must pass:
+#### What changed
 
-| Test | Why it is non-negotiable |
+`KNOWN_CRITICAL_EXPLOIT` is reclassified `kind: EXTERNAL_INTELLIGENCE` and
+`coreRequired: false`, and is excluded from `coreCapabilitiesFor` by
+construction. In its place the disposition carries an
+`IncidentIntelligenceReport` **beside** coverage, never inside it.
+
+The asymmetry is the entire correction:
+
+```
+incident FOUND      → knowledge → vetoes CLEAR
+incident NOT FOUND  → silence   → zero assurance, and no effect on disposition
+```
+
+#### Why this is not a lowered security requirement
+
+Nothing that could previously block CLEAR has lost that power. An active
+critical incident still forces CRITICAL; an unresolved conflict between sources
+still forces INSUFFICIENT_EVIDENCE. Both are tested.
+
+What was removed is the one rule that never carried information: *unknown
+absence blocks CLEAR forever*. That rule did not make the system safer, it made
+it unable to answer — and an assessment that returns the same verdict for a
+clean stablecoin and an unexamined scam is not being conservative, it is being
+silent.
+
+The correction is in fact **strictly more conservative** in one direction: the
+old model had a live path to `VERIFIED_NO_KNOWN_CRITICAL_INCIDENT`, a claim of
+verified global absence. That value no longer exists in the type system. The
+closest permitted statement is
+`NO_ACTIVE_CRITICAL_INCIDENT_FOUND_IN_QUERIED_SOURCES`, which names its own
+boundary and carries `assuranceCredit: 0` as a literal type.
+
+#### The launch requirement moved — it was not dropped
+
+See **TD-40**. CORE Launch still requires the system to find and surface
+credible known critical incidents. That capability now belongs to Phase 3,
+which owns external research evidence.
+
+---
+
+### TD-40 — External incident intelligence not yet implemented
+
+| Field | Value |
 |---|---|
-| Legally storable for commercial use | Evidence rows are stored and served commercially |
-| Declares coverage over the asset | Absence means nothing without a coverage claim |
-| Deterministic identity mapping | Symbol matching produces false incidents |
+| **Title** | No external source is queried for known critical incidents |
+| **Discovered** | 2026-09-01 · Phase 2E (successor to TD-27) |
+| **Severity** | HIGH |
+| **Class** | 🔴 **`PRE-LAUNCH BLOCKER` — targeted Phase 3** |
+| **Owner** | Phase 3 — Core Research |
 
-- **DefiLlama** has the coverage and the shape, and forbids commercial use and
-  republication outright — with liquidated damages named at USD 100,000.
-- **Per-project official GitHub advisories** pass licence, identity and
-  resolution semantics, and return **zero advisories** for Chainlink, Uniswap,
-  Aave, Compound and Circle. Adopting them would rebuild the empty-registry
-  failure with better paperwork.
-- **SlowMist, De.Fi, Chainabuse** publish no data licence. Unknown is not a
-  licence.
-- **GHSA and CVE** are correctly licensed and cover software packages. On-chain
-  token contracts are not in scope for either.
+Every asset currently returns `incidentIntelligence.status = NOT_AVAILABLE`:
+honest, zero-assurance, and non-blocking for the deterministic gate. That is
+the correct behaviour for a system with no incident source. It is not
+acceptable at launch.
 
-#### Why it cannot be solved the way TD-32 was
+**Before launch the system must be able to find and surface a credible known
+critical incident when external research finds one.** It is explicitly NOT
+required to prove that no incident exists — that requirement was retired with
+TD-27 and must not be reintroduced.
 
-TD-32 fell to direct measurement — the chain answers whether a transfer is
-deducted. There is no on-chain answer to *was this protocol exploited* or *is
-that exploit still unresolved*. Inferring it from a paused contract or a drained
-pool would be manufacturing evidence.
-
-#### What closes it
-
-A source, obtained as a business decision:
-
-1. Written consent from DefiLlama — their ToS contemplates it explicitly
-2. A commercial threat-intelligence agreement (Chainalysis · TRM · CertiK · Immunefi)
-3. Published terms from SlowMist or De.Fi, which may cost nothing to request
-
-#### What must NOT close it
-
-Seeding the registry by hand and declaring a coverage scope over it. The entries
-would be a snapshot with no live lookup, and the scope would be an assertion
-about our own diligence rather than a source's coverage. That converts
-`COVERAGE_UNKNOWN` into `VERIFIED_NO_KNOWN_CRITICAL_INCIDENT` without adding a
-single fact — the precise failure this entry records.
+This blocks **launch**, not Phase 2. Phase 2 owns deterministic security; the
+capability it must provide — that a found incident can veto CLEAR — is
+implemented and tested. Acquiring the source is Phase 3 work, and the paths are
+recorded in [`13-DATA-GOVERNANCE.md`](./13-DATA-GOVERNANCE.md): written consent
+from DefiLlama, a commercial threat-intelligence agreement, or published terms
+from SlowMist or De.Fi.
 
 ---|---|
 | **Title** | `KNOWN_CRITICAL_EXPLOIT` is answered from a hand-maintained, currently empty registry |

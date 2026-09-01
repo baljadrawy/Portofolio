@@ -38,8 +38,25 @@ export type SecurityCapability =
  */
 export type CapabilityState = "CHECKED" | "NOT_APPLICABLE" | "UNSUPPORTED" | "UNKNOWN" | "FAILED";
 
+/**
+ * DETERMINISTIC          answerable from chain state or a bounded probe. Its
+ *                        scope is knowable, so "we checked and found nothing"
+ *                        is a real result.
+ * EXTERNAL_INTELLIGENCE  a fact about the outside world, reported by people.
+ *                        No source can enumerate everything that happened, so
+ *                        absence here is never a result — only a silence.
+ *
+ * Phase 2D established this empirically: no legally usable incident source
+ * declares coverage over the asset class. Phase 2E draws the consequence —
+ * these two kinds cannot share one coverage denominator, because a missing
+ * deterministic check means "we did not look" while missing external
+ * intelligence means "nobody can look exhaustively".
+ */
+export type CapabilityKind = "DETERMINISTIC" | "EXTERNAL_INTELLIGENCE";
+
 export interface CapabilitySpec {
   capability: SecurityCapability;
+  kind: CapabilityKind;
   evm: boolean;
   solana: boolean;
   nativeApplicable: boolean;
@@ -50,26 +67,36 @@ export interface CapabilitySpec {
 }
 
 export const CAPABILITY_MATRIX: CapabilitySpec[] = [
-  { capability: "CONTRACT_CODE_PRESENT", evm: true,  solana: false, nativeApplicable: false, coreRequired: true,  deterministic: true,  falsePositiveSensitivity: "LOW" },
-  { capability: "HONEYPOT_INDICATOR",   evm: true,  solana: false, nativeApplicable: false, coreRequired: true,  deterministic: false, falsePositiveSensitivity: "HIGH" },
-  { capability: "SELL_RESTRICTION",     evm: true,  solana: false, nativeApplicable: false, coreRequired: true,  deterministic: false, falsePositiveSensitivity: "HIGH" },
-  { capability: "BUY_TAX",              evm: true,  solana: false, nativeApplicable: false, coreRequired: false, deterministic: false, falsePositiveSensitivity: "MEDIUM" },
-  { capability: "SELL_TAX",             evm: true,  solana: false, nativeApplicable: false, coreRequired: true,  deterministic: false, falsePositiveSensitivity: "MEDIUM" },
-  { capability: "MINT_AUTHORITY",       evm: true,  solana: true,  nativeApplicable: false, coreRequired: true,  deterministic: true,  falsePositiveSensitivity: "LOW" },
-  { capability: "UNLIMITED_MINT_RISK",  evm: true,  solana: true,  nativeApplicable: false, coreRequired: true,  deterministic: false, falsePositiveSensitivity: "MEDIUM" },
-  { capability: "FREEZE_AUTHORITY",     evm: false, solana: true,  nativeApplicable: false, coreRequired: true,  deterministic: true,  falsePositiveSensitivity: "LOW" },
-  { capability: "BLACKLIST_CAPABILITY", evm: true,  solana: false, nativeApplicable: false, coreRequired: true,  deterministic: false, falsePositiveSensitivity: "MEDIUM" },
-  { capability: "OWNERSHIP_PRIVILEGE",  evm: true,  solana: false, nativeApplicable: false, coreRequired: true,  deterministic: true,  falsePositiveSensitivity: "MEDIUM" },
-  { capability: "PROXY_UPGRADEABILITY", evm: true,  solana: false, nativeApplicable: false, coreRequired: true,  deterministic: true,  falsePositiveSensitivity: "MEDIUM" },
-  { capability: "ADMIN_PRIVILEGES",     evm: true,  solana: false, nativeApplicable: false, coreRequired: false, deterministic: true,  falsePositiveSensitivity: "MEDIUM" },
-  { capability: "LIQUIDITY_RISK",       evm: true,  solana: true,  nativeApplicable: false, coreRequired: false, deterministic: false, falsePositiveSensitivity: "MEDIUM" },
-  { capability: "HOLDER_CONCENTRATION", evm: true,  solana: true,  nativeApplicable: false, coreRequired: false, deterministic: false, falsePositiveSensitivity: "HIGH" },
-  { capability: "KNOWN_CRITICAL_EXPLOIT", evm: true, solana: true, nativeApplicable: true,  coreRequired: true,  deterministic: false, falsePositiveSensitivity: "LOW" },
+  { capability: "CONTRACT_CODE_PRESENT", kind: "DETERMINISTIC", evm: true,  solana: false, nativeApplicable: false, coreRequired: true,  deterministic: true,  falsePositiveSensitivity: "LOW" },
+  { capability: "HONEYPOT_INDICATOR", kind: "DETERMINISTIC",   evm: true,  solana: false, nativeApplicable: false, coreRequired: true,  deterministic: false, falsePositiveSensitivity: "HIGH" },
+  { capability: "SELL_RESTRICTION", kind: "DETERMINISTIC",     evm: true,  solana: false, nativeApplicable: false, coreRequired: true,  deterministic: false, falsePositiveSensitivity: "HIGH" },
+  { capability: "BUY_TAX", kind: "DETERMINISTIC",              evm: true,  solana: false, nativeApplicable: false, coreRequired: false, deterministic: false, falsePositiveSensitivity: "MEDIUM" },
+  { capability: "SELL_TAX", kind: "DETERMINISTIC",             evm: true,  solana: false, nativeApplicable: false, coreRequired: true,  deterministic: false, falsePositiveSensitivity: "MEDIUM" },
+  { capability: "MINT_AUTHORITY", kind: "DETERMINISTIC",       evm: true,  solana: true,  nativeApplicable: false, coreRequired: true,  deterministic: true,  falsePositiveSensitivity: "LOW" },
+  { capability: "UNLIMITED_MINT_RISK", kind: "DETERMINISTIC",  evm: true,  solana: true,  nativeApplicable: false, coreRequired: true,  deterministic: false, falsePositiveSensitivity: "MEDIUM" },
+  { capability: "FREEZE_AUTHORITY", kind: "DETERMINISTIC",     evm: false, solana: true,  nativeApplicable: false, coreRequired: true,  deterministic: true,  falsePositiveSensitivity: "LOW" },
+  { capability: "BLACKLIST_CAPABILITY", kind: "DETERMINISTIC", evm: true,  solana: false, nativeApplicable: false, coreRequired: true,  deterministic: false, falsePositiveSensitivity: "MEDIUM" },
+  { capability: "OWNERSHIP_PRIVILEGE", kind: "DETERMINISTIC",  evm: true,  solana: false, nativeApplicable: false, coreRequired: true,  deterministic: true,  falsePositiveSensitivity: "MEDIUM" },
+  { capability: "PROXY_UPGRADEABILITY", kind: "DETERMINISTIC", evm: true,  solana: false, nativeApplicable: false, coreRequired: true,  deterministic: true,  falsePositiveSensitivity: "MEDIUM" },
+  { capability: "ADMIN_PRIVILEGES", kind: "DETERMINISTIC",     evm: true,  solana: false, nativeApplicable: false, coreRequired: false, deterministic: true,  falsePositiveSensitivity: "MEDIUM" },
+  { capability: "LIQUIDITY_RISK", kind: "DETERMINISTIC",       evm: true,  solana: true,  nativeApplicable: false, coreRequired: false, deterministic: false, falsePositiveSensitivity: "MEDIUM" },
+  { capability: "HOLDER_CONCENTRATION", kind: "DETERMINISTIC", evm: true,  solana: true,  nativeApplicable: false, coreRequired: false, deterministic: false, falsePositiveSensitivity: "HIGH" },
+  // coreRequired is FALSE by contract correction, not by convenience. It is not
+  // optional — an active incident still vetoes CLEAR (see computeDisposition).
+  // What was removed is the requirement to PROVE ITS ABSENCE, which no source
+  // can do. Its launch requirement moved to Phase 3, not away. See TD-27/TD-40.
+  { capability: "KNOWN_CRITICAL_EXPLOIT", kind: "EXTERNAL_INTELLIGENCE", evm: true, solana: true, nativeApplicable: true,  coreRequired: false, deterministic: false, falsePositiveSensitivity: "LOW" },
 ];
 
+/**
+ * The DETERMINISTIC CORE set — the checks whose scope we can state and whose
+ * completion we can verify. External intelligence is excluded by construction,
+ * so it can never silently become part of a coverage ratio.
+ */
 export function coreCapabilitiesFor(family: "evm" | "solana", isNative: boolean): SecurityCapability[] {
   return CAPABILITY_MATRIX.filter(
-    (c) => c.coreRequired && (family === "evm" ? c.evm : c.solana) && (!isNative || c.nativeApplicable),
+    (c) => c.kind === "DETERMINISTIC" && c.coreRequired &&
+      (family === "evm" ? c.evm : c.solana) && (!isNative || c.nativeApplicable),
   ).map((c) => c.capability);
 }
 
@@ -82,38 +109,67 @@ export function coreCapabilitiesFor(family: "evm" | "solana", isNative: boolean)
 export type SecurityDisposition = "CLEAR" | "CAUTION" | "CRITICAL" | "INSUFFICIENT_EVIDENCE";
 
 /**
- * Incident-coverage semantics.
+ * External incident intelligence — status, never assurance.
  *
- * LOCKED RULE:
- *   ABSENCE FROM AN INCOMPLETE REGISTRY  ≠  VERIFIED ABSENCE OF INCIDENTS
+ * LOCKED RULES:
+ *   ABSENCE FROM AN INCOMPLETE SOURCE  ≠  VERIFIED ABSENCE OF INCIDENTS
+ *   NO EVIDENCE FOUND                  ≠  EVIDENCE OF NO INCIDENT
  *
- * A source may only assert VERIFIED_NO_KNOWN_CRITICAL_INCIDENT when it has a
- * declared, non-empty coverage scope that actually includes the asset. An empty
- * or scope-less registry yields COVERAGE_UNKNOWN, which does not count as a
- * checked capability and therefore cannot contribute to CLEAR.
+ * `VERIFIED_NO_KNOWN_CRITICAL_INCIDENT` was removed in Phase 2E. It claimed
+ * verified global absence, which is not a defensible statement about an
+ * open world: no source enumerates every incident that has ever occurred, so
+ * no lookup can establish that none did.
+ *
+ * What replaces it says only what actually happened — sources were queried and
+ * returned nothing — and carries zero assurance weight.
  */
-export type IncidentCoverage =
-  | "VERIFIED_NO_KNOWN_CRITICAL_INCIDENT"
-  | "KNOWN_CRITICAL_INCIDENT"
-  | "COVERAGE_UNKNOWN"
+export type IncidentIntelligenceStatus =
+  /** A credible, currently-active critical incident was found. Vetoes CLEAR. */
+  | "ACTIVE_CRITICAL_INCIDENT_FOUND"
+  /** Credible sources disagree on whether a critical incident is unresolved. */
+  | "INCIDENT_CONFLICT_UNRESOLVED"
+  /** A real lookup ran and returned nothing. Informational ONLY. */
+  | "NO_ACTIVE_CRITICAL_INCIDENT_FOUND_IN_QUERIED_SOURCES"
+  /** No provider configured, or no lookup was performed. */
+  | "NOT_AVAILABLE"
+  /** A lookup was attempted and the source errored, timed out, or malformed. */
+  | "SOURCE_FAILED"
+  /** The question does not apply to this asset. */
   | "NOT_APPLICABLE";
 
-/** Only a source with real coverage can produce a positive assurance. */
-export function incidentCoverageFrom(opts: {
-  registrySize: number;
-  coverageScopeDeclared: boolean;
-  assetInScope: boolean;
-  hasUnresolvedCritical: boolean;
-}): IncidentCoverage {
-  if (opts.hasUnresolvedCritical) return "KNOWN_CRITICAL_INCIDENT";
-  if (!opts.coverageScopeDeclared || opts.registrySize === 0) return "COVERAGE_UNKNOWN";
-  if (!opts.assetInScope) return "COVERAGE_UNKNOWN";
-  return "VERIFIED_NO_KNOWN_CRITICAL_INCIDENT";
+/**
+ * Zero. Always. The return type is the literal `0`, so a future change that
+ * tries to grant assurance for a not-found result fails to compile rather than
+ * quietly reintroducing proof-by-absence.
+ */
+export function incidentAssuranceCredit(_s: IncidentIntelligenceStatus): 0 {
+  return 0;
 }
 
-/** COVERAGE_UNKNOWN must not be treated as a completed check. */
-export function incidentCoverageCountsAsChecked(c: IncidentCoverage): boolean {
-  return c === "VERIFIED_NO_KNOWN_CRITICAL_INCIDENT" || c === "KNOWN_CRITICAL_INCIDENT" || c === "NOT_APPLICABLE";
+/** Only a found incident blocks. Silence never blocks and never clears. */
+export function incidentBlocksClear(s: IncidentIntelligenceStatus): boolean {
+  return s === "ACTIVE_CRITICAL_INCIDENT_FOUND" || s === "INCIDENT_CONFLICT_UNRESOLVED";
+}
+
+/**
+ * Incident intelligence NEVER counts toward deterministic coverage — in either
+ * direction. A found incident blocks through the disposition, not by inflating
+ * a ratio; a silent source does not deflate one.
+ */
+export function incidentCountsTowardDeterministicCoverage(): false {
+  return false;
+}
+
+export interface IncidentIntelligenceReport {
+  status: IncidentIntelligenceStatus;
+  /** Sources actually queried. Empty means no lookup happened. */
+  sourcesQueried: string[];
+  /** Incidents affirmatively found. Absence of findings is not a finding. */
+  positiveFindings: number;
+  /** Structurally zero — see incidentAssuranceCredit. */
+  assuranceCredit: 0;
+  /** Why the status is what it is, in one line, for a human reading a report. */
+  detail: string;
 }
 
 export interface Finding {
@@ -145,13 +201,21 @@ export interface DispositionInput {
   conflicts: SecurityCapability[];
   providerFailures: number;
   providersAttempted: number;
+  /**
+   * External incident intelligence. Optional: an assessment that performed no
+   * incident lookup at all is NOT_AVAILABLE, which is honest and non-blocking.
+   */
+  incidentIntelligence?: IncidentIntelligenceReport;
 }
 
 export interface DispositionResult {
   disposition: SecurityDisposition;
   policyVersion: string;
   reasons: string[];
+  /** DETERMINISTIC checks only. External intelligence is never in this ratio. */
   coverage: { required: number; checked: number; ratio: number; missing: SecurityCapability[] };
+  /** Reported alongside coverage, never folded into it. */
+  incidentIntelligence: IncidentIntelligenceReport;
 }
 
 /**
@@ -171,8 +235,17 @@ export function isEstablishedCritical(f: Finding): boolean {
   return f.deterministic || f.corroboration >= 2;
 }
 
+export const NO_INCIDENT_LOOKUP: IncidentIntelligenceReport = {
+  status: "NOT_AVAILABLE",
+  sourcesQueried: [],
+  positiveFindings: 0,
+  assuranceCredit: 0,
+  detail: "no incident intelligence source is configured; this asset was not searched",
+};
+
 export function computeDisposition(input: DispositionInput): DispositionResult {
   const reasons: string[] = [];
+  const incidentIntelligence = input.incidentIntelligence ?? NO_INCIDENT_LOOKUP;
   const missing = input.coreRequired.filter((c) => !input.checked.includes(c));
   const coverage = {
     required: input.coreRequired.length,
@@ -189,26 +262,54 @@ export function computeDisposition(input: DispositionInput): DispositionResult {
     for (const f of establishedCritical) {
       reasons.push(`CRITICAL: ${f.capability} — ${f.detail} (${f.deterministic ? "deterministic" : `corroborated x${f.corroboration}`})`);
     }
-    return { disposition: "CRITICAL", policyVersion: SECURITY_POLICY_VERSION, reasons, coverage };
+    return { disposition: "CRITICAL", policyVersion: SECURITY_POLICY_VERSION, reasons, coverage, incidentIntelligence };
   }
 
-  // 2. Conflicting critical evidence is surfaced, never silently resolved to
+  // 2. A credible active incident vetoes CLEAR on its own authority.
+  //
+  //    This is the half of incident intelligence that survives the Phase 2E
+  //    correction intact. Finding an incident is a positive observation about
+  //    the world and it is trusted. NOT finding one is silence, and silence is
+  //    handled nowhere in this function — deliberately, because there is no
+  //    rule to write. It neither blocks nor clears.
+  if (incidentBlocksClear(incidentIntelligence.status)) {
+    reasons.push(
+      incidentIntelligence.status === "ACTIVE_CRITICAL_INCIDENT_FOUND"
+        ? `CRITICAL: active critical incident — ${incidentIntelligence.detail}`
+        : `Unresolved incident conflict — ${incidentIntelligence.detail}`,
+    );
+    return {
+      disposition: incidentIntelligence.status === "ACTIVE_CRITICAL_INCIDENT_FOUND" ? "CRITICAL" : "INSUFFICIENT_EVIDENCE",
+      policyVersion: SECURITY_POLICY_VERSION, reasons, coverage, incidentIntelligence,
+    };
+  }
+
+  // 3. Conflicting critical evidence is surfaced, never silently resolved to
   //    the scarier side. Conservative here means "we do not know", not "danger".
   if (input.conflicts.length > 0) {
     reasons.push(`Sources disagree on: ${input.conflicts.join(", ")} — conflict surfaced, not resolved`);
-    return { disposition: "INSUFFICIENT_EVIDENCE", policyVersion: SECURITY_POLICY_VERSION, reasons, coverage };
+    return { disposition: "INSUFFICIENT_EVIDENCE", policyVersion: SECURITY_POLICY_VERSION, reasons, coverage, incidentIntelligence };
   }
 
-  // 3. A missing CORE capability means we did not look. That is not safety.
+  // 4. An empty CORE set cannot produce CLEAR. A native asset has no token
+  //    contract, so every contract-level capability is inapplicable and the
+  //    required set is empty — which would make CLEAR vacuously true. A verdict
+  //    that holds because nothing was asked is not a verdict.
+  if (coverage.required === 0) {
+    reasons.push("No CORE security capability applies to this asset; contract-level assessment is not meaningful");
+    return { disposition: "INSUFFICIENT_EVIDENCE", policyVersion: SECURITY_POLICY_VERSION, reasons, coverage, incidentIntelligence };
+  }
+
+  // 5. A missing CORE capability means we did not look. That is not safety.
   if (missing.length > 0) {
     reasons.push(`Core capabilities not checked: ${missing.join(", ")}`);
-    return { disposition: "INSUFFICIENT_EVIDENCE", policyVersion: SECURITY_POLICY_VERSION, reasons, coverage };
+    return { disposition: "INSUFFICIENT_EVIDENCE", policyVersion: SECURITY_POLICY_VERSION, reasons, coverage, incidentIntelligence };
   }
 
   // 4. Every provider failed → we know nothing.
   if (input.providersAttempted > 0 && input.providerFailures === input.providersAttempted) {
     reasons.push("All providers failed — no security signal obtained");
-    return { disposition: "INSUFFICIENT_EVIDENCE", policyVersion: SECURITY_POLICY_VERSION, reasons, coverage };
+    return { disposition: "INSUFFICIENT_EVIDENCE", policyVersion: SECURITY_POLICY_VERSION, reasons, coverage, incidentIntelligence };
   }
 
   // 5. Unestablished critical signals downgrade to CAUTION, never CLEAR and
@@ -217,23 +318,23 @@ export function computeDisposition(input: DispositionInput): DispositionResult {
     for (const f of unestablishedCritical) {
       reasons.push(`CAUTION: ${f.capability} flagged but not established (${f.freshness}, corroboration ${f.corroboration})`);
     }
-    return { disposition: "CAUTION", policyVersion: SECURITY_POLICY_VERSION, reasons, coverage };
+    return { disposition: "CAUTION", policyVersion: SECURITY_POLICY_VERSION, reasons, coverage, incidentIntelligence };
   }
 
   const cautions = input.findings.filter((f) => f.severity === "CAUTION");
   if (cautions.length > 0) {
     for (const f of cautions) reasons.push(`CAUTION: ${f.capability} — ${f.detail}`);
-    return { disposition: "CAUTION", policyVersion: SECURITY_POLICY_VERSION, reasons, coverage };
+    return { disposition: "CAUTION", policyVersion: SECURITY_POLICY_VERSION, reasons, coverage, incidentIntelligence };
   }
 
   // 6. Partial provider failure with full core coverage is still not CLEAR.
   if (input.providerFailures > 0) {
     reasons.push(`${input.providerFailures}/${input.providersAttempted} providers failed — coverage reduced`);
-    return { disposition: "CAUTION", policyVersion: SECURITY_POLICY_VERSION, reasons, coverage };
+    return { disposition: "CAUTION", policyVersion: SECURITY_POLICY_VERSION, reasons, coverage, incidentIntelligence };
   }
 
   reasons.push("All core capabilities checked; no caution or critical findings");
-  return { disposition: "CLEAR", policyVersion: SECURITY_POLICY_VERSION, reasons, coverage };
+  return { disposition: "CLEAR", policyVersion: SECURITY_POLICY_VERSION, reasons, coverage, incidentIntelligence };
 }
 
 // ── EVM chain-state helpers ─────────────────────────────────────────────────

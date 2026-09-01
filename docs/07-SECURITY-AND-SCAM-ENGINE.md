@@ -51,6 +51,54 @@
 > known shapes were absent from the deployed bytecode. It is a statement about
 > the scan, not about the token.
 >
+> ### Phase 2E — deterministic security vs external incident intelligence
+>
+> Two kinds of knowledge were sharing one coverage denominator. They are now
+> separated, in the type system and in the report.
+>
+> | | Deterministic CORE | External incident intelligence |
+> |---|---|---|
+> | Source of truth | chain state, bounded probe | people reporting the world |
+> | Scope | knowable and declarable | nobody enumerates every incident |
+> | "found nothing" means | a real result | silence |
+> | Missing means | **we did not look** → blocks CLEAR | nobody can look exhaustively → does not block |
+> | Counted in coverage | ✅ | ❌ never, in either direction |
+>
+> `KNOWN_CRITICAL_EXPLOIT` is `kind: EXTERNAL_INTELLIGENCE` and is excluded
+> from `coreCapabilitiesFor` by construction, so it cannot drift back into a
+> ratio. It is reported beside coverage as an `IncidentIntelligenceReport`.
+>
+> **The asymmetry is the whole design:**
+>
+> ```
+> incident FOUND      →  knowledge  →  vetoes CLEAR
+> incident NOT FOUND  →  silence    →  zero assurance, no effect on disposition
+> ```
+>
+> | Status | Meaning | Effect |
+> |---|---|---|
+> | `ACTIVE_CRITICAL_INCIDENT_FOUND` | credible live incident | **CRITICAL** |
+> | `INCIDENT_CONFLICT_UNRESOLVED` | sources disagree | **INSUFFICIENT_EVIDENCE** |
+> | `NO_ACTIVE_CRITICAL_INCIDENT_FOUND_IN_QUERIED_SOURCES` | a lookup ran, found nothing | informational only |
+> | `NOT_AVAILABLE` | no source configured, no lookup | none |
+> | `SOURCE_FAILED` | source errored or timed out | none — failure is not absence |
+>
+> Every one carries `assuranceCredit: 0`. The return type is the literal `0`,
+> so a future attempt to grant credit for a not-found result fails to compile.
+>
+> `VERIFIED_NO_KNOWN_CRITICAL_INCIDENT` **was deleted.** It asserted verified
+> global absence, which nothing can establish. The strongest permitted
+> statement now names its own boundary: *in queried sources*.
+>
+> **Coverage is not confidence.** `9/9` says every deterministic check we can
+> define was completed. It is not a probability that the asset is safe, and it
+> says nothing at all about incidents.
+>
+> One consequence worth stating: a native asset has an EMPTY deterministic CORE
+> set, because every capability is contract-level. That would make CLEAR
+> vacuously true, so an empty required set returns INSUFFICIENT_EVIDENCE. A
+> verdict that holds because nothing was asked is not a verdict.
+>
 > ### Incident coverage contract — what KNOWN_CRITICAL_EXPLOIT covers
 >
 > Defined in Phase 2D **before** any source was chosen, so the contract could

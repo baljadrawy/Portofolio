@@ -355,10 +355,25 @@ Coverage on the golden set rose from 3/10 to **9/10** (USDC, USDT), 8/10 (DAI,
 LINK), 5/10 (WETH — no liquidity pair on the tested factory). Zero CRITICAL
 findings, zero false positives.
 
-**CLEAR is still unreachable for every asset** — not because a token failed,
-but because `KNOWN_CRITICAL_EXPLOIT` returns `COVERAGE_UNKNOWN` from an empty
-incident registry. **TD-27 is reclassified `PRE-LAUNCH BLOCKER`**: it is now
-the single remaining obstacle to a CLEAR disposition.
+**Phase 2D** searched for an incident source and found none usable: seven
+source families, every one failing on licence, coverage, identity or resolution
+semantics. **Phase 2E** drew the architectural consequence.
+
+### Phase ownership, corrected in 2E
+
+| Phase | Owns |
+|---|---|
+| **Phase 2** | Deterministic security + evidence foundation. A found incident vetoes CLEAR — the mechanism is implemented and tested. |
+| **Phase 3** | External research evidence: security incidents, protocol incidents, current disclosures, news and catalysts, regulatory events, fundamentals. **Acquiring the incident source lives here** (TD-40). |
+| **Phase 4** | Interpretation, thesis, decision guardrails. Consumes incident evidence as a thesis breaker. |
+
+`KNOWN_CRITICAL_EXPLOIT` was reclassified from a mandatory deterministic CORE
+capability to external intelligence. **TD-27 RESOLVED by contract correction;
+TD-40 opened as a Phase-3-targeted `PRE-LAUNCH BLOCKER`.** Launch still requires
+finding incidents; it never again requires proving none exist.
+
+Deterministic coverage is now reported as `9/9` for EVM tokens, with incident
+status carried separately and always at zero assurance.
 
 ---
 

@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  computeDisposition, isEstablishedCritical, coreCapabilitiesFor,
+  computeDisposition, NO_INCIDENT_LOOKUP, type IncidentIntelligenceReport, isEstablishedCritical, coreCapabilitiesFor,
   isContractCode, detectProxy, slotIsSet, isRenounced,
   EIP7702_DELEGATION_PREFIX, SECURITY_POLICY_VERSION, CAPABILITY_MATRIX,
   type Finding,
@@ -78,9 +78,14 @@ test("core capabilities differ per network family", () => {
   assert.ok(!evm.includes("FREEZE_AUTHORITY"), "no EVM freeze authority equivalent");
 });
 
-test("native assets require only chain-level capabilities", () => {
+test("a native asset has no deterministic CORE capability at all", () => {
+  // Corrected in Phase 2E. Previously this returned KNOWN_CRITICAL_EXPLOIT,
+  // which is external intelligence rather than a deterministic check — the
+  // conflation this phase removed. A native asset has no token contract, so
+  // there is genuinely nothing here to verify deterministically, and the
+  // disposition must refuse to call that CLEAR.
   const native = coreCapabilitiesFor("evm", true);
-  assert.deepEqual(native, ["KNOWN_CRITICAL_EXPLOIT"]);
+  assert.deepEqual(native, []);
   assert.ok(!native.includes("CONTRACT_CODE_PRESENT"), "a native asset has no contract");
 });
 
@@ -251,4 +256,107 @@ test("a RETRIEVED freshness basis stays visible on the finding", () => {
     isEstablishedCritical(f({ severity: "CRITICAL", deterministic: true, freshnessBasis: "RETRIEVED" })),
     isEstablishedCritical(f({ severity: "CRITICAL", deterministic: true, freshnessBasis: "OBSERVED" })),
   );
+});
+
+
+// ── Phase 2E — deterministic security vs external incident intelligence ─────
+//
+// The contract these tests pin: finding an incident is knowledge and it acts;
+// not finding one is silence and it does nothing. Before this correction the
+// second half was wired backwards — silence blocked CLEAR for every asset
+// forever, which read as rigour but was really an inability to answer.
+
+const CORE3 = ["HONEYPOT_INDICATOR", "SELL_RESTRICTION", "BLACKLIST_CAPABILITY"] as any;
+
+function incident(over: Partial<IncidentIntelligenceReport>): IncidentIntelligenceReport {
+  return { status: "NOT_AVAILABLE", sourcesQueried: [], positiveFindings: 0, assuranceCredit: 0, detail: "t", ...over };
+}
+
+test("deterministic checks complete + incident intelligence unavailable → CLEAR permitted", () => {
+  const r = computeDisposition({
+    findings: [], coreRequired: CORE3, checked: CORE3, conflicts: [],
+    providerFailures: 0, providersAttempted: 2,
+    incidentIntelligence: incident({ status: "NOT_AVAILABLE" }),
+  });
+  assert.equal(r.disposition, "CLEAR");
+  // CLEAR here is the bounded statement, and the unknown is still on the face
+  // of the result rather than swallowed by it.
+  assert.equal(r.incidentIntelligence.status, "NOT_AVAILABLE");
+  assert.equal(r.incidentIntelligence.assuranceCredit, 0);
+});
+
+test("an active critical incident vetoes CLEAR even when every check is clean", () => {
+  const r = computeDisposition({
+    findings: [], coreRequired: CORE3, checked: CORE3, conflicts: [],
+    providerFailures: 0, providersAttempted: 2,
+    incidentIntelligence: incident({ status: "ACTIVE_CRITICAL_INCIDENT_FOUND", positiveFindings: 1 }),
+  });
+  assert.equal(r.disposition, "CRITICAL");
+});
+
+test("an unresolved incident conflict blocks CLEAR without asserting danger", () => {
+  const r = computeDisposition({
+    findings: [], coreRequired: CORE3, checked: CORE3, conflicts: [],
+    providerFailures: 0, providersAttempted: 2,
+    incidentIntelligence: incident({ status: "INCIDENT_CONFLICT_UNRESOLVED" }),
+  });
+  assert.equal(r.disposition, "INSUFFICIENT_EVIDENCE");
+});
+
+test("an incident source failure does not block deterministic CLEAR, and is disclosed", () => {
+  const r = computeDisposition({
+    findings: [], coreRequired: CORE3, checked: CORE3, conflicts: [],
+    providerFailures: 0, providersAttempted: 2,
+    incidentIntelligence: incident({ status: "SOURCE_FAILED", sourcesQueried: ["internal-rules"] }),
+  });
+  assert.equal(r.disposition, "CLEAR");
+  assert.equal(r.incidentIntelligence.status, "SOURCE_FAILED");
+  assert.equal(r.incidentIntelligence.assuranceCredit, 0, "a failure must never earn assurance");
+});
+
+test("a missing deterministic capability still blocks CLEAR regardless of incident status", () => {
+  for (const st of ["NOT_AVAILABLE", "NO_ACTIVE_CRITICAL_INCIDENT_FOUND_IN_QUERIED_SOURCES"] as const) {
+    const r = computeDisposition({
+      findings: [], coreRequired: CORE3, checked: ["HONEYPOT_INDICATOR"] as any, conflicts: [],
+      providerFailures: 0, providersAttempted: 2,
+      incidentIntelligence: incident({ status: st }),
+    });
+    assert.equal(r.disposition, "INSUFFICIENT_EVIDENCE", st);
+    assert.ok(r.coverage.missing.length > 0);
+  }
+});
+
+test("a search that found nothing earns no assurance and is named for what it is", () => {
+  const r = computeDisposition({
+    findings: [], coreRequired: CORE3, checked: CORE3, conflicts: [],
+    providerFailures: 0, providersAttempted: 2,
+    incidentIntelligence: incident({
+      status: "NO_ACTIVE_CRITICAL_INCIDENT_FOUND_IN_QUERIED_SOURCES",
+      sourcesQueried: ["internal-rules"],
+    }),
+  });
+  // The name says "in queried sources". It does not say verified absence, and
+  // no type in the union can express verified absence any more.
+  assert.equal(r.incidentIntelligence.status, "NO_ACTIVE_CRITICAL_INCIDENT_FOUND_IN_QUERIED_SOURCES");
+  assert.equal(r.incidentIntelligence.assuranceCredit, 0);
+  assert.equal(r.coverage.required, 3, "incident intelligence never enters the deterministic denominator");
+});
+
+test("incident intelligence defaults to NOT_AVAILABLE when the caller omits it", () => {
+  const r = computeDisposition({
+    findings: [], coreRequired: CORE3, checked: CORE3, conflicts: [],
+    providerFailures: 0, providersAttempted: 1,
+  });
+  assert.equal(r.incidentIntelligence.status, "NOT_AVAILABLE");
+  assert.equal(r.incidentIntelligence, NO_INCIDENT_LOOKUP);
+});
+
+test("a native asset cannot reach a vacuous CLEAR on an empty capability set", () => {
+  // Required set is empty, so "no critical behaviour was established" would be
+  // trivially true. A verdict that holds because nothing was asked is not one.
+  const r = computeDisposition({
+    findings: [], coreRequired: [], checked: [], conflicts: [],
+    providerFailures: 0, providersAttempted: 1,
+  });
+  assert.equal(r.disposition, "INSUFFICIENT_EVIDENCE");
 });

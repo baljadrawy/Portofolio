@@ -194,3 +194,22 @@ test("CLEAR is formally defined and explicitly denies meaning SAFE", () => {
   assert.match(CLEAR_DEFINITION, /does NOT mean the asset is safe/i);
   assert.match(CLEAR_DEFINITION, /prove presence but cannot prove absence/);
 });
+
+test("the deduction payload carries no block-volatile field", () => {
+  // Regression, Phase 2E. The payload is hashed for deduplication, so any
+  // field that moves on its own schedule makes an unchanged fact hash
+  // differently on every read — the same measurement then accumulates a new
+  // evidence row per block. Absolute pool balances did exactly that until
+  // they were removed; amountReceived carries the same meaning and is stable.
+  const payload = {
+    verdict: "ZERO_DEDUCTION_OBSERVED_ON_TESTED_PATH",
+    testedPath: { method: "eth_call", requested: "1000000" },
+    requestedAmount: "1000000", amountReceived: "1000000",
+    deductionAmount: "0", deductionRatio: 0, severity: "NONE",
+    normalizerVersion: "deduction-probe-v1", knownFalseNegatives: [],
+  };
+  for (const banned of ["pairBalanceBefore", "pairBalanceAfter", "blockNumber", "timestamp"]) {
+    assert.ok(!(banned in payload), `${banned} must not be hashed`);
+  }
+  assert.ok("amountReceived" in payload, "the stable measurement must survive");
+});

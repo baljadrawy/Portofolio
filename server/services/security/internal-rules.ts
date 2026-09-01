@@ -1,3 +1,4 @@
+import { incidentCoverageFrom } from "@shared/security-rules";
 import type {
   SecurityProvider, SecurityAssessmentInput, SecurityAssessmentResult,
   ProviderCapabilities, SecurityObservation,
@@ -20,6 +21,25 @@ import type {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const INCIDENT_REGISTRY_VERSION = "incident-registry-v1";
+
+/**
+ * Declared coverage scope. EMPTY means this registry claims authority over
+ * nothing, so it can only ever answer COVERAGE_UNKNOWN.
+ *
+ * To assert VERIFIED_NO_KNOWN_CRITICAL_INCIDENT for an asset, that asset must
+ * fall inside a declared scope AND the registry must be non-empty. Until a real
+ * advisory source is integrated, this list stays empty deliberately — an empty
+ * registry claiming "no incidents" is a false assurance, which is exactly the
+ * failure this remediation removes.
+ */
+export interface CoverageScope {
+  networkFamily: "evm" | "solana";
+  chainId?: number;
+  /** Human description of what the scope actually covers. */
+  description: string;
+}
+
+export const DECLARED_COVERAGE_SCOPES: CoverageScope[] = [];
 
 export interface CuratedIncident {
   networkFamily: "evm" | "solana";
@@ -44,7 +64,10 @@ export const CURATED_INCIDENTS: CuratedIncident[] = [];
 export class InternalRulesAdapter implements SecurityProvider {
   readonly providerKey = "internal-rules";
 
-  constructor(private incidents: CuratedIncident[] = CURATED_INCIDENTS) {}
+  constructor(
+    private incidents: CuratedIncident[] = CURATED_INCIDENTS,
+    private scopes: CoverageScope[] = DECLARED_COVERAGE_SCOPES,
+  ) {}
 
   capabilities(): ProviderCapabilities {
     return {
@@ -74,19 +97,35 @@ export class InternalRulesAdapter implements SecurityProvider {
         x.addressKey === key,
     );
 
+    const assetInScope = this.scopes.some(
+      (s) => s.networkFamily === i.networkFamily && (s.chainId === undefined || s.chainId === i.chainId),
+    );
+
+    const coverage = incidentCoverageFrom({
+      registrySize: this.incidents.length,
+      coverageScopeDeclared: this.scopes.length > 0,
+      assetInScope,
+      hasUnresolvedCritical: hits.some((h) => h.unresolved && h.severity === "CRITICAL"),
+    });
+
     const observations: SecurityObservation[] = [
       {
         type: "KNOWN_CRITICAL_EXPLOIT",
-        provenance: `${INCIDENT_REGISTRY_VERSION} (${this.incidents.length} entries)`,
+        provenance: `${INCIDENT_REGISTRY_VERSION} (${this.incidents.length} entries, ${this.scopes.length} scopes)`,
         raw: {
           registryVersion: INCIDENT_REGISTRY_VERSION,
+          coverage,
+          // Historical facts are always reported, even when coverage is unknown.
           matches: hits.map((h) => ({ title: h.title, occurredAt: h.occurredAt, reference: h.reference, unresolved: h.unresolved })),
-          // Stated in the payload so a CLEAR is never read as stronger than it is.
-          coverageCaveat: "manually curated registry; absence is not proof of absence",
+          coverageCaveat:
+            coverage === "COVERAGE_UNKNOWN"
+              ? "registry declares no authority over this asset; absence proves nothing"
+              : "curated registry with declared scope",
         },
-        // A historical incident stays a historical FACT. Only an UNRESOLVED one
-        // asserts a present risk — this is the Event Fact vs Assessment split.
-        normalized: hits.some((h) => h.unresolved && h.severity === "CRITICAL"),
+        // The coverage verdict IS the normalized value. COVERAGE_UNKNOWN is not
+        // a completed check and therefore cannot contribute to CLEAR.
+        // A resolved historical incident stays a fact but asserts no present risk.
+        normalized: coverage,
         // The registry version IS the temporal anchor. Wall-clock time here
         // would make an unchanged registry look like a new fact on every read.
         observedAt: null,

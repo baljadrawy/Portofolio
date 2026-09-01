@@ -3,6 +3,7 @@ import { evidenceService } from "../evidence";
 import { computeFreshness } from "@shared/evidence-rules";
 import {
   computeDisposition, coreCapabilitiesFor, SECURITY_POLICY_VERSION,
+  incidentCoverageCountsAsChecked,
   type Finding, type SecurityCapability, type SecurityDisposition,
 } from "@shared/security-rules";
 
@@ -99,6 +100,15 @@ export class SecurityAssessmentService {
       }
     }
 
+    // COVERAGE_UNKNOWN means the source disclaims authority over this asset.
+    // It is an answered CALL but not a completed CHECK, so it is excluded here
+    // and the capability falls into `missing` — which forces
+    // INSUFFICIENT_EVIDENCE rather than a false CLEAR.
+    const incidentObs = byCapability.get("KNOWN_CRITICAL_EXPLOIT") ?? [];
+    const incidentUsable = incidentObs.length > 0 &&
+      incidentObs.some((o: any) => incidentCoverageCountsAsChecked(o.value));
+    if (incidentObs.length > 0 && !incidentUsable) byCapability.delete("KNOWN_CRITICAL_EXPLOIT");
+
     const capabilitiesChecked = Array.from(byCapability.keys()) as SecurityCapability[];
     type Obs = { providerKey: string; value: unknown; deterministic: boolean; observedAt: Date | null };
     const criticalFindings: Finding[] = [];
@@ -136,6 +146,12 @@ export class SecurityAssessmentService {
       const detail = `${positive.map((p) => p.providerKey).join(", ")} report ${cap}`;
 
       switch (cap) {
+        case "KNOWN_CRITICAL_EXPLOIT":
+          // Only an unresolved, in-scope incident is critical.
+          if ((obs as Obs[]).some((o) => o.value === "KNOWN_CRITICAL_INCIDENT")) {
+            criticalFindings.push(toFinding(cap, "CRITICAL", false, obs.length, freshness, [], "known unresolved critical incident"));
+          }
+          break;
         case "HONEYPOT_INDICATOR":
         case "SELL_RESTRICTION":
           criticalFindings.push(toFinding(cap, "CRITICAL", deterministic, corroboration, freshness, [], detail));

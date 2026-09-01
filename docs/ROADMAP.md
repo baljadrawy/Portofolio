@@ -324,20 +324,28 @@ known-good sample · at least one live provider in production.
 
 `PASS`. Three live providers, no vendor name in the schema:
 
+**Production provider set** (`PRODUCTION_PROVIDER_KEYS`, enforced by test):
+
 | Provider | Role | Tier |
 |---|---|---|
 | `direct-chain` | deterministic RPC — contract code, proxy slots, ownership, Solana mint/freeze authority | 1 |
-| `goplus` | corroborating — honeypot, taxes, blacklist, mintable | 2 |
-| `internal-rules` | curated incident registry | 2 |
+| `internal-rules` | curated incident registry with declared coverage scope | 2 |
+
+`goplus` was evaluated, implemented, then **removed from production** —
+`DEVELOPMENT_ONLY`. Its licence restricts commercial use, restricts
+redistribution, and is silent on caching and retention. Silence is not
+permission and the Evidence Store caches by design.
 
 Disposition `CLEAR / CAUTION / CRITICAL / INSUFFICIENT_EVIDENCE` under policy
-`security-policy-v1`. **No investment decision vocabulary at this layer.**
+`security-policy-v2`. **No investment decision vocabulary at this layer.**
 
-Live-verified behaviour: WSOL → `CLEAR` · Solana USDC → `CAUTION` (live mint and
-freeze authorities) · unsupported chain → `INSUFFICIENT_EVIDENCE`, never CLEAR.
+Live-verified: native ETH and native SOL → `INSUFFICIENT_EVIDENCE` (an empty
+incident registry cannot assert safety) · EVM tokens → `INSUFFICIENT_EVIDENCE`
+(four capabilities lost with GoPlus, **TD-32**) · unsupported chain →
+`INSUFFICIENT_EVIDENCE`. **No path produces a false CLEAR.**
 
 **No migration was required** — evidence lands in the Phase 1 tables.
-88 tests passing.
+95 tests passing.
 
 ---
 

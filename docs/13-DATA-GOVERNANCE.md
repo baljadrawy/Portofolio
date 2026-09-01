@@ -21,22 +21,55 @@ false assurance.
 These are the sources Phase 2 actually uses and stores evidence from. Under the
 narrowed TD-24 rule, these are the ones that had to be resolved before launch.
 
-### `direct-chain` — public blockchain RPC
+### `direct-chain` — hosted public RPC
+
+> **Correction (remediation).** An earlier draft recorded this as "No ToS —
+> public chain state". That conflated two different things:
+>
+> ```
+> blockchain DATA   ≠   the hosted RPC SERVICE that serves it
+> ```
+>
+> The data is public and carries no licence. The **endpoint** is somebody's
+> hosted service and has its own acceptable-use terms.
 
 | Field | Value |
 |---|---|
 | **Purpose** | deterministic contract/mint state |
-| **Endpoints** | `*.publicnode.com` (EVM) · `api.mainnet-beta.solana.com` (Solana) |
-| **Tier** | 1 — chain state read directly, not via an indexer's opinion |
+| **Data licence** | ✅ **None applicable.** What we store are facts read from public chain state — bytecode presence, storage slots, mint/freeze authority. These are not a proprietary dataset and no party licenses them. |
+| **Service providers** | **PublicNode** (`*.publicnode.com`) — EVM · **Solana Foundation** (`api.mainnet-beta.solana.com`) — Solana |
+| **Service terms** | ⚠️ `UNKNOWN — REQUIRES REVIEW` for the acceptable-use policy of each hosted endpoint |
+| **Why the unknown does not block** | The terms that could bind us are about **usage of the service** (rate limits, fair use), not about **ownership of the data**. Nothing we store is theirs. If an endpoint's policy disallowed our call pattern, the remedy is to change endpoint or self-host — not to delete evidence. |
 | **API key** | none |
-| **Commercial use** | **Unrestricted.** Public blockchain state is not a proprietary dataset. What we store is what the chain says. |
-| **Caching / retention / redistribution** | **Unrestricted** for the same reason |
 | **Attribution** | none required |
-| **Cost** | free · public endpoints · no contract or quota |
+| **Cost** | free, best-effort |
 | **Verified** | 2026-09-01 |
-| **Note** | Public endpoints are best-effort. Rate limiting or downtime is treated as a provider failure, never as safety. |
+| **Note** | Best-effort endpoints. Rate limiting or downtime is a provider failure, never safety. Two of four endpoints evaluated were already unusable. |
+| **Exit** | running our own node removes even the service-terms question. Not required now. |
 
-### `goplus` — GoPlus Token Security API
+### `goplus` — 🔴 REMOVED FROM PRODUCTION (DEVELOPMENT_ONLY)
+
+> **Decision:** `DEVELOPMENT_ONLY`. **Not registered in the production
+> provider set.** Enforced in `shared/security-rules.ts` via
+> `PRODUCTION_PROVIDER_KEYS` and covered by a test.
+>
+> **Why removal rather than owner acceptance.** Owner acceptance is not a legal
+> resolution and has been struck from the project's options. The licence
+> restricts commercial use without written permission, restricts
+> redistribution, and is **silent on caching and retention**. Silence is not
+> permission, and the Evidence Store exists precisely to cache and retain.
+> Written permission could not be obtained within this phase.
+>
+> **What that costs:** honeypot, sell restriction, sell tax and blacklist
+> become uncovered for EVM tokens. Those assets now return
+> `INSUFFICIENT_EVIDENCE` — a real capability gap, and never a false CLEAR.
+> Tracked as **TD-32**.
+>
+> **Alternatives examined:** honeypot.is (restricts competitive use and
+> resale) and HoneyDB (non-commercial only) carry comparable or worse
+> constraints. No legally cleaner source was found for these capabilities.
+
+### `goplus` — evaluated terms (retained for the record)
 
 | Field | Value |
 |---|---|

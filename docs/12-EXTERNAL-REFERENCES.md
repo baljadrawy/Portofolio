@@ -113,6 +113,35 @@ to ignore warnings.
 
 ---
 
+## 2c. GoPlus — EVALUATED then REMOVED (Phase 2, 2026-09-01)
+
+**Decision:** `DEVELOPMENT_ONLY`
+
+Implemented, live-tested, and then removed from the production provider set.
+
+| Check | Finding |
+|---|---|
+| API | free, no key, 30 req/min, returns real data |
+| Technical fitness | good — covers honeypot, taxes, blacklist, mintable |
+| Commercial use | 🔴 restricted without written permission (§6) |
+| Redistribution | 🔴 restricted (§6) |
+| Caching / retention | ⚠️ **silent** — neither granted nor prohibited |
+| Attribution | 🔴 mandatory (§3, §5) |
+
+**Why removed.** Owner acceptance is not a legal resolution. Written permission
+could not be obtained in this phase, and the Evidence Store caches and retains
+by design — precisely the areas the licence does not address. Silence is not
+permission.
+
+**Cost, recorded not hidden:** four CORE EVM capabilities lost → **TD-32**,
+a PRE-LAUNCH BLOCKER. The CORE requirement was not lowered to manufacture a
+PASS.
+
+**Alternatives examined:** honeypot.is (restricts competitive use and resale),
+HoneyDB (non-commercial only). No legally cleaner source found.
+
+---
+
 ## 3. VerumTrade
 
 **Domain:** evidence-first research architecture

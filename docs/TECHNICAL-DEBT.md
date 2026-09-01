@@ -5,7 +5,7 @@
 > `00-CURRENT-STATE-AUDIT.md` is a **historical snapshot** taken at commit
 > `2521133`. When the two disagree, **this file is current**.
 
-**Last updated:** 2026-09-01 (Phase 2 execution)
+**Last updated:** 2026-09-01 (Phase 2 remediation)
 
 ---
 
@@ -57,14 +57,15 @@ Contract: [`CORE-LAUNCH-SCOPE.md`](./CORE-LAUNCH-SCOPE.md).
 ### Summary
 
 ```
-PRE-LAUNCH BLOCKER      : 1   (TD-24 — partially closed; security sources done,
-                               market sources remain, they become CORE in Phase 3)
-PRE-LAUNCH NON-BLOCKER  : 6   (TD-09, TD-23, TD-27, TD-28, TD-29, TD-31)
+PRE-LAUNCH BLOCKER      : 2   TD-24 (market sources — become CORE in Phase 3)
+                              TD-32 (EVM token security uncovered)
+PRE-LAUNCH NON-BLOCKER  : 5   TD-09, TD-23, TD-27, TD-31, TD-33
 POST-LAUNCH             : 14
-RESOLVED                : 10  (TD-26 closed in Phase 2)
+RESOLVED                : 12  TD-26, TD-28, TD-29 closed
 ```
 
-**One item still blocks launch, and only partially.**
+**TD-32 is the honest cost of resolving the licence exposure.** It is recorded
+as a blocker rather than absorbed by lowering the CORE requirement.
 
 ---
 
@@ -530,8 +531,8 @@ table is genuinely unreferenced and removing it.
 | **Title** | `KNOWN_CRITICAL_EXPLOIT` is answered from a hand-maintained, currently empty registry |
 | **Discovered** | 2026-09-01 · Phase 2 |
 | **Severity** | MEDIUM |
-| **Class** | `PRE-LAUNCH NON-BLOCKER` |
-| **Rationale** | A "no incident" result means *not present in our registry*, not *no incident exists*. The mechanism, versioning and Event-Fact-vs-Assessment semantics are all correct; only the content is missing. The caveat is emitted in the observation payload so a CLEAR is never read as stronger than it is. Without this adapter no asset could reach CLEAR at all, since a CORE capability would have no source. |
+| **Class** | `PRE-LAUNCH NON-BLOCKER` — **semantics fixed in remediation** |
+| **Rationale** | Originally the empty registry produced a POSITIVE assurance and let native assets reach CLEAR. Fixed: an empty or scope-less registry now returns `COVERAGE_UNKNOWN`, which is not a completed check, so the capability falls to `missing` and the disposition becomes INSUFFICIENT_EVIDENCE. A "no incident" result means *not present in our registry*, not *no incident exists*. The mechanism, versioning and Event-Fact-vs-Assessment semantics are all correct; only the content is missing. The caveat is emitted in the observation payload so a CLEAR is never read as stronger than it is. Without this adapter no asset could reach CLEAR at all, since a CORE capability would have no source. |
 | **Target phase** | Phase 3 or a curated advisory feed |
 | **Status** | OPEN |
 
@@ -544,10 +545,9 @@ table is genuinely unreferenced and removing it.
 | **Title** | GoPlus licence restricts commercial use of its data |
 | **Discovered** | 2026-09-01 · Phase 2 |
 | **Severity** | HIGH |
-| **Class** | `PRE-LAUNCH NON-BLOCKER` *(becomes a BLOCKER on any commercial launch)* |
-| **Rationale** | §6: *"You shall not directly use our original data to conduct any commercial activities and generate revenue without Goplus's explicit written permission."* Present use is personal and therefore permitted. Attribution is already enforced in code. The system is designed so GoPlus can be dropped without losing deterministic coverage. |
-| **Action if commercialising** | obtain written permission, or drop GoPlus and replace its corroborating role |
-| **Status** | OPEN |
+| **Class** | ✅ **RESOLVED by removal** |
+| **Rationale** | GoPlus is no longer in the production provider set, so its commercial-use restriction no longer binds any production path. Kept as DEVELOPMENT_ONLY. |
+| **Status** | RESOLVED |
 
 ---
 
@@ -558,10 +558,9 @@ table is genuinely unreferenced and removing it.
 | **Title** | The GoPlus agreement neither permits nor prohibits caching or retention |
 | **Discovered** | 2026-09-01 · Phase 2 |
 | **Severity** | MEDIUM |
-| **Class** | `PRE-LAUNCH NON-BLOCKER` |
-| **Rationale** | Absence of a clause is not permission. Recorded honestly as `UNKNOWN` rather than assumed. Exposure is limited: GoPlus evidence is corroborating, is never the sole basis of a CRITICAL, and could be purged without losing deterministic coverage. |
-| **Target phase** | clarify with GoPlus before commercial launch |
-| **Status** | OPEN |
+| **Class** | ✅ **RESOLVED by removal** |
+| **Rationale** | Absence of a clause is not permission. Rather than assume, GoPlus was removed from production entirely, so no caching or retention of its data occurs. |
+| **Status** | RESOLVED |
 
 ---
 
@@ -589,6 +588,36 @@ table is genuinely unreferenced and removing it.
 | **Class** | `PRE-LAUNCH NON-BLOCKER` |
 | **Rationale** | Uncovered chains return `INSUFFICIENT_EVIDENCE`, never a false CLEAR — the fail-safe is correct and verified by test. Extending coverage is configuration, not architecture: one RPC URL per chain. |
 | **Target phase** | Phase 3 or as holdings demand |
+| **Status** | OPEN |
+
+---
+
+### TD-32 — EVM token security capabilities uncovered
+
+| Field | Value |
+|---|---|
+| **Title** | Honeypot, sell restriction, sell tax and blacklist have no production source for EVM tokens |
+| **Discovered** | 2026-09-01 · Phase 2 remediation |
+| **Severity** | HIGH |
+| **Class** | **`PRE-LAUNCH BLOCKER`** |
+| **Rationale** | Removing GoPlus resolved the licence exposure but left four CORE EVM capabilities with no source. EVM tokens therefore return `INSUFFICIENT_EVIDENCE` — safe and honest, but it means Core Launch Gate condition 3 ("detects critical security risk") is **not met for EVM tokens**. Solana is unaffected: its checks are fully deterministic. |
+| **Why not lower the requirement** | Dropping these from CORE to obtain a PASS would let Phase 4 recommend HOLD on an unscreened EVM token. The requirement stands; the gap is recorded. |
+| **Resolution options** | written permission from GoPlus · a legally clear alternative provider · deterministic simulation-based honeypot detection (eth_call sell simulation) · self-hosted analysis |
+| **Target phase** | before launch |
+| **Status** | OPEN |
+
+---
+
+### TD-33 — Hosted RPC service terms unreviewed
+
+| Field | Value |
+|---|---|
+| **Title** | Acceptable-use policies of PublicNode and the Solana Foundation RPC are unreviewed |
+| **Discovered** | 2026-09-01 · Phase 2 remediation |
+| **Severity** | LOW |
+| **Class** | `PRE-LAUNCH NON-BLOCKER` |
+| **Rationale** | Corrects an earlier overstatement that these had "no ToS". The blockchain DATA carries no licence and nothing we store belongs to the endpoint operator; what may bind us is service acceptable-use (rate limits, fair use). If a policy disallowed our call pattern the remedy is to change endpoint or self-host, not to delete evidence. |
+| **Target phase** | before launch, or resolved by self-hosting a node |
 | **Status** | OPEN |
 
 ---

@@ -1,7 +1,7 @@
 // Pure security rules — no network, no database, no provider SDK.
 // Deterministic and unit-testable in isolation.
 
-export const SECURITY_POLICY_VERSION = "security-policy-v2";
+export const SECURITY_POLICY_VERSION = "security-policy-v3";
 
 /**
  * Providers permitted in the production CORE path.
@@ -13,7 +13,7 @@ export const SECURITY_POLICY_VERSION = "security-policy-v2";
  * written permission and is silent on caching and retention. Silence is not
  * permission, and the Evidence Store caches and retains by design.
  */
-export const PRODUCTION_PROVIDER_KEYS = ["direct-chain", "internal-rules"] as const;
+export const PRODUCTION_PROVIDER_KEYS = ["direct-chain", "sell-path", "internal-rules"] as const;
 
 // ── Capabilities ────────────────────────────────────────────────────────────
 

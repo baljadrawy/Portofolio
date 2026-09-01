@@ -5,7 +5,7 @@
 > `00-CURRENT-STATE-AUDIT.md` is a **historical snapshot** taken at commit
 > `2521133`. When the two disagree, **this file is current**.
 
-**Last updated:** 2026-09-01 (Phase 2C — TD-32 closed)
+**Last updated:** 2026-09-01 (Phase 2D — TD-27 re-evaluated, still open)
 
 ---
 
@@ -524,19 +524,68 @@ table is genuinely unreferenced and removing it.
 
 ---
 
-### TD-27 — Incident registry is manually curated and empty
+### TD-27 — KNOWN_CRITICAL_EXPLOIT has no source with usable coverage
 
 | Field | Value |
-|
+|---|---|
+| **Title** | No legally usable incident source declares coverage over the asset class |
+| **Class** | 🔴 **`PRE-LAUNCH BLOCKER`** |
+| **Status** | **OPEN — blocked on a source, not on engineering** |
+| **Last evaluated** | 2026-09-01 (Phase 2D) |
 
-**Reclassified.** With TD-32 closed, this is now the ONLY capability blocking
-CLEAR for every asset on every chain. The registry is empty and declares no
-coverage scope, so `KNOWN_CRITICAL_EXPLOIT` always returns `COVERAGE_UNKNOWN`,
-which is not a completed check.
+With TD-32 closed, this is the only capability standing between any asset and a
+CLEAR disposition. The registry is empty and declares no coverage scope, so
+`KNOWN_CRITICAL_EXPLOIT` always returns `COVERAGE_UNKNOWN`, which is not a
+completed check.
 
-The semantics are correct — an empty registry must not assert safety — but the
-consequence is that no asset can reach CLEAR. Closing it needs either a
-populated registry with a declared scope, or a real advisory source.
+**The semantics are correct and must not be changed.** An empty registry must
+not assert safety. The debt is the missing source, not the model.
+
+#### Why Phase 2D did not close it
+
+Seven source families were evaluated (full table and licence quotations in
+[`13-DATA-GOVERNANCE.md`](./13-DATA-GOVERNANCE.md)). Every one failed at least
+one of the three tests a source must pass:
+
+| Test | Why it is non-negotiable |
+|---|---|
+| Legally storable for commercial use | Evidence rows are stored and served commercially |
+| Declares coverage over the asset | Absence means nothing without a coverage claim |
+| Deterministic identity mapping | Symbol matching produces false incidents |
+
+- **DefiLlama** has the coverage and the shape, and forbids commercial use and
+  republication outright — with liquidated damages named at USD 100,000.
+- **Per-project official GitHub advisories** pass licence, identity and
+  resolution semantics, and return **zero advisories** for Chainlink, Uniswap,
+  Aave, Compound and Circle. Adopting them would rebuild the empty-registry
+  failure with better paperwork.
+- **SlowMist, De.Fi, Chainabuse** publish no data licence. Unknown is not a
+  licence.
+- **GHSA and CVE** are correctly licensed and cover software packages. On-chain
+  token contracts are not in scope for either.
+
+#### Why it cannot be solved the way TD-32 was
+
+TD-32 fell to direct measurement — the chain answers whether a transfer is
+deducted. There is no on-chain answer to *was this protocol exploited* or *is
+that exploit still unresolved*. Inferring it from a paused contract or a drained
+pool would be manufacturing evidence.
+
+#### What closes it
+
+A source, obtained as a business decision:
+
+1. Written consent from DefiLlama — their ToS contemplates it explicitly
+2. A commercial threat-intelligence agreement (Chainalysis · TRM · CertiK · Immunefi)
+3. Published terms from SlowMist or De.Fi, which may cost nothing to request
+
+#### What must NOT close it
+
+Seeding the registry by hand and declaring a coverage scope over it. The entries
+would be a snapshot with no live lookup, and the scope would be an assertion
+about our own diligence rather than a source's coverage. That converts
+`COVERAGE_UNKNOWN` into `VERIFIED_NO_KNOWN_CRITICAL_INCIDENT` without adding a
+single fact — the precise failure this entry records.
 
 ---|---|
 | **Title** | `KNOWN_CRITICAL_EXPLOIT` is answered from a hand-maintained, currently empty registry |

@@ -104,6 +104,66 @@ narrowed TD-24 rule, these are the ones that had to be resolved before launch.
 
 ---
 
+
+## Incident coverage source evaluation — Phase 2D, verified 2026-09-01
+
+TD-27 asks a narrow question: **can absence of a known critical incident ever
+mean something?** For it to mean anything, a source must declare that it covers
+the asset, we must query it live, and we must be legally allowed to store what
+it returns. Seven source families were evaluated against those three tests.
+
+| Source | Licence / ToS | Declared coverage | Asset identity | Current-impact status | Decision |
+|---|---|---|---|---|---|
+| **DefiLlama `/hacks`** | ❌ personal, non-commercial; "copy, scrape, harvest or otherwise exploit … for commercial purposes without prior written consent"; "republish the data in any form" prohibited; liquidated damages to USD 100,000 | 1,250 incidents, protocol/CEX/token level, no stated completeness claim | ❌ no contract address in any record; `defillamaId` present on 42% (520/1250) | ❌ none — `returnedFunds` is money recovered, not vulnerability remediated | **REJECT** for production |
+| **SlowMist Hacked** | ⬜ UNKNOWN — no published API terms or data licence found | good practical coverage | UNKNOWN | UNKNOWN | **REJECT** (§8: unknown is not a licence) |
+| **DeFiHackLabs** | ✅ Apache-2.0 | Foundry proof-of-concept reproductions, not an incident register | ❌ 21 EVM addresses in 126 KB of README; real addresses live inside `.sol` files and identify attacker/victim contracts, not the asset | ❌ none | **REFERENCE_ONLY** — usable licence, unusable shape |
+| **GitHub Advisory Database** | ✅ CC-BY-4.0 | npm · PyPI · Go · Maven · crates.io · NuGet · RubyGems · Composer · Pub · Swift · Actions | ❌ ecosystem packages; on-chain token contracts are not an ecosystem | ✅ withdrawn / patched semantics | **NOT APPLICABLE** — no coverage of the asset class |
+| **Per-project official advisories** (GitHub Security Advisories API) | ✅ CC-BY-4.0, public REST, no key | ✅ explicit and auditable per repository | ✅ explicit asset → repository mapping, no fuzzy matching | ✅ | **REJECT — measured empty**, see below |
+| **De.Fi REKT · Chainabuse** | ⬜ UNKNOWN / proprietary; Chainabuse requires a partner agreement | fair | UNKNOWN | UNKNOWN | **REJECT** (§8) |
+| **CVE / NVD** | ✅ public domain | negligible smart-contract coverage | ❌ | partial | **NOT APPLICABLE** |
+
+### Why the official-advisory route failed, with numbers
+
+It was the most promising candidate: correct licence, live lookup, deterministic
+identity, and real resolution semantics. It was tested against the published
+advisory endpoint of five major protocols on 2026-09-01:
+
+```
+smartcontractkit/chainlink        → 0 advisories
+Uniswap/v3-core                   → 0 advisories
+aave/aave-v3-core                 → 0 advisories
+compound-finance/compound-protocol → 0 advisories
+circlefin/stablecoin-evm          → 0 advisories
+```
+
+DeFi protocols do not disclose on-chain exploits through GitHub advisories.
+Adopting this source would produce "no advisory found" for every asset — an
+absence that proves nothing, dressed as a completed check. That is the exact
+failure TD-27 exists to prevent, rebuilt with a legal licence on top.
+
+### Why this cannot be solved deterministically the way TD-32 was
+
+TD-32 was closed by replacing a licensed provider with direct measurement: the
+chain itself answers whether a transfer is deducted. `KNOWN_CRITICAL_EXPLOIT`
+has no such answer on chain. Whether a protocol *was exploited* and whether that
+exploit *is still unresolved* are facts about the world, reported by people.
+Inferring them from on-chain signals — a paused contract, a drained pool — would
+be manufacturing evidence, which the architecture forbids.
+
+### The paths that remain, in order of preference
+
+1. **Written consent from DefiLlama.** Their ToS prohibits commercial use
+   "without prior written consent", which means consent is contemplated. This is
+   the shortest route to a real, structured, broad source. It is a business
+   action, not an engineering one.
+2. **A commercial threat-intelligence agreement** (Chainalysis, TRM Labs,
+   CertiK, Immunefi). Clean rights, real coverage, real cost and a signed
+   contract.
+3. **Published terms from SlowMist or De.Fi.** Both have usable data and no
+   published licence. A direct request may resolve it at zero cost.
+
+None can be taken unilaterally inside an engineering gate.
+
 ## Register
 
 ### Sources already used by the running application

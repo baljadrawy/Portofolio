@@ -51,6 +51,68 @@
 > known shapes were absent from the deployed bytecode. It is a statement about
 > the scan, not about the token.
 >
+> ### Incident coverage contract — what KNOWN_CRITICAL_EXPLOIT covers
+>
+> Defined in Phase 2D **before** any source was chosen, so the contract could
+> not be quietly shaped to fit whatever a vendor happened to sell.
+>
+> Four things get conflated under "the asset had an incident". They are not the
+> same claim and they do not carry the same weight for an owner:
+>
+> | # | Scope | In CORE | Why |
+> |---|---|:--:|---|
+> | A | Incident in the **token contract itself** | ✅ | Directly changes what holding the asset means |
+> | B | Incident in the **protocol/project that issues or governs it** | ✅ | An exploited issuer materially affects the asset |
+> | C | Incident in a **bridge** the asset transits | ❌ POST-LAUNCH | Affects a wrapped representation, not every holder |
+> | D | Incident in the **chain/network** | ❌ POST-LAUNCH | Real, but a different capability with a different source |
+>
+> **CORE scope = A + B.** Deliberately not "all security news". A macro
+> advisory, an exchange breach, or an unrelated ecosystem event is out of scope
+> even when it moves the price — this is a security check, not a market feed.
+>
+> Scope B requires the asset→project relationship to be **explicit and
+> auditable**. Symbol matching is prohibited: two unrelated projects share a
+> ticker constantly, and a rename or a contract migration breaks name equality
+> in both directions. An ambiguous relationship resolves to `COVERAGE_UNKNOWN`,
+> never to a match and never to an absence.
+>
+> ### Incident fact vs current impact
+>
+> Two independent axes, and collapsing them is the standing trap:
+>
+> ```
+> INCIDENT FACT      exploit occurred 2025-01-01   → true permanently
+> CURRENT IMPACT     unresolved as of 2025-01-02   → may be stale by 2026
+> ```
+>
+> A historical incident does not disappear once remediated, and it does not stay
+> CRITICAL forever by default. `ACTIVE / MITIGATED / RESOLVED / UNKNOWN` is a
+> property of the present, carries its own freshness, and goes stale on its own
+> schedule. An incident whose current status has gone stale cannot support a
+> CLEAR — the fact that we once knew it was resolved is not knowledge that it
+> still is.
+>
+> ### When absence is allowed to mean something
+>
+> `NO_ACTIVE_CRITICAL_INCIDENT_FOUND_WITHIN_COVERAGE` may be stated only when
+> **all five** hold:
+>
+> 1. the source declares a coverage scope
+> 2. the asset falls inside it, by deterministic identity
+> 3. a lookup actually executed against the live source
+> 4. the source did not fail, time out, or return a malformed response
+> 5. the data is current within policy
+>
+> Any other outcome — timeout, malformed response, unsupported chain, ambiguous
+> mapping, data stale beyond policy — is `COVERAGE_UNKNOWN` or `SOURCE_FAILED`.
+> **Never `NO INCIDENT`.** A source that fails to answer has told us nothing
+> about the asset; the one thing it must never be allowed to say is "clean".
+>
+> **As of Phase 2D no source satisfies condition 1 under a licence permitting
+> commercial storage, so no asset satisfies conditions 1–5, and
+> `KNOWN_CRITICAL_EXPLOIT` returns `COVERAGE_UNKNOWN` for every asset.** See
+> **TD-27**. This is the model working, not the model missing.
+>
 > The single-token sell simulation is likewise one path at one size against one
 > pair. A contract that taxes above a threshold, blocks a specific address, or
 > activates after a delay will pass it. This is why the deduction result is

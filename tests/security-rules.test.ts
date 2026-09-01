@@ -179,3 +179,61 @@ test("no investment decision vocabulary exists at this layer", () => {
     assert.notEqual(r.disposition as string, forbidden);
   }
 });
+
+// ── Phase 2B: sell-path verdicts in the disposition ─────────────────────────
+
+test("a confirmed honeypot is CRITICAL from a single deterministic observation", () => {
+  const r = computeDisposition({
+    ...base,
+    coreRequired: ["HONEYPOT_INDICATOR"] as any,
+    checked: ["HONEYPOT_INDICATOR"] as any,
+    findings: [f({ capability: "HONEYPOT_INDICATOR", severity: "CRITICAL", deterministic: true })],
+  });
+  assert.equal(r.disposition, "CRITICAL");
+});
+
+test("a blacklist INTERFACE is CAUTION, never CRITICAL", () => {
+  // USDC and USDT both expose one by design. Treating the interface as proof of
+  // malice would flag the two largest stablecoins on Ethereum.
+  const r = computeDisposition({
+    ...base,
+    coreRequired: ["BLACKLIST_CAPABILITY"] as any,
+    checked: ["BLACKLIST_CAPABILITY"] as any,
+    findings: [f({ capability: "BLACKLIST_CAPABILITY", severity: "CAUTION", deterministic: true })],
+  });
+  assert.equal(r.disposition, "CAUTION");
+});
+
+test("missing honeypot coverage blocks CLEAR", () => {
+  const r = computeDisposition({
+    ...base,
+    coreRequired: ["HONEYPOT_INDICATOR", "SELL_RESTRICTION"] as any,
+    checked: ["SELL_RESTRICTION"] as any,
+    findings: [],
+  });
+  assert.equal(r.disposition, "INSUFFICIENT_EVIDENCE");
+  assert.deepEqual(r.coverage.missing, ["HONEYPOT_INDICATOR"]);
+});
+
+test("missing blacklist coverage blocks CLEAR", () => {
+  const r = computeDisposition({
+    ...base,
+    coreRequired: ["HONEYPOT_INDICATOR", "BLACKLIST_CAPABILITY"] as any,
+    checked: ["HONEYPOT_INDICATOR"] as any,
+    findings: [],
+  });
+  assert.equal(r.disposition, "INSUFFICIENT_EVIDENCE");
+});
+
+test("full coverage with only bounded negative observations permits CLEAR", () => {
+  // "No restriction observed in the tested path" is a real observation. With
+  // every CORE capability checked and nothing flagged, CLEAR is allowed — the
+  // bounded-coverage caveat travels in the evidence payload, not in a veto.
+  const r = computeDisposition({
+    ...base,
+    coreRequired: ["HONEYPOT_INDICATOR", "SELL_RESTRICTION", "BLACKLIST_CAPABILITY"] as any,
+    checked: ["HONEYPOT_INDICATOR", "SELL_RESTRICTION", "BLACKLIST_CAPABILITY"] as any,
+    findings: [],
+  });
+  assert.equal(r.disposition, "CLEAR");
+});

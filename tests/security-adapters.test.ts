@@ -185,7 +185,7 @@ test("GoPlus is NOT in the production provider set", () => {
   // Its licence restricts commercial use and is silent on caching/retention.
   // Silence is not permission, and the Evidence Store caches by design.
   assert.ok(!(PRODUCTION_PROVIDER_KEYS as readonly string[]).includes("goplus"));
-  assert.deepEqual([...PRODUCTION_PROVIDER_KEYS], ["direct-chain", "internal-rules"]);
+  assert.deepEqual([...PRODUCTION_PROVIDER_KEYS], ["direct-chain", "sell-path", "internal-rules"]);
 });
 
 test("CONTRACT_CODE_PRESENT claims only what eth_getCode proves", () => {

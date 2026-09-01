@@ -19,12 +19,55 @@ export type SellRestrictionVerdict =
   | "TEST_FAILED"
   | "NOT_APPLICABLE";
 
-export type SellTaxVerdict =
-  | "OBSERVED_EFFECTIVE_TAX"
-  | "NO_TAX_OBSERVED_IN_TESTED_PATH"
+/**
+ * Effective deduction on the tested path.
+ *
+ * The name says "OBSERVED … ON_TESTED_PATH" because that is all a single
+ * simulation establishes. A zero deduction here does NOT mean the token has no
+ * sell tax — it means this amount, from this sender, into this pair, at this
+ * block, lost nothing.
+ */
+export type SellDeductionVerdict =
+  | "EFFECTIVE_DEDUCTION_OBSERVED_ON_TESTED_PATH"
+  | "ZERO_DEDUCTION_OBSERVED_ON_TESTED_PATH"
+  | "TRANSFER_REVERTED"
   | "COVERAGE_INCOMPLETE"
   | "TEST_FAILED"
   | "NOT_APPLICABLE";
+
+/** Backwards-compatible alias; the category stays SELL_TAX. */
+export type SellTaxVerdict = SellDeductionVerdict;
+
+/**
+ * Deduction thresholds.
+ *
+ * RATIONALE, not invented numbers:
+ *   1.0  — a 100% deduction means the recipient receives nothing. The transfer
+ *          call may succeed, but the position is economically unsellable, which
+ *          is what a honeypot achieves. Deterministic and unambiguous.
+ *   0.5  — above half the value destroyed, the asset cannot be exited at any
+ *          reasonable loss. Treated as CRITICAL.
+ *   0.0  — any measurable deduction is worth surfacing as CAUTION; the size is
+ *          reported so a human judges it. No opinion is encoded about what
+ *          level is "acceptable".
+ */
+export const DEDUCTION_CRITICAL_RATIO = 0.5;
+export const DEDUCTION_TOTAL_RATIO = 1.0;
+
+export type DeductionSeverity = "NONE" | "CAUTION" | "CRITICAL";
+
+export function classifyDeduction(requested: bigint, received: bigint): {
+  severity: DeductionSeverity; ratio: number; deduction: bigint;
+} {
+  if (requested <= BigInt(0)) return { severity: "NONE", ratio: 0, deduction: BigInt(0) };
+  const capped = received < BigInt(0) ? BigInt(0) : received;
+  const deduction = requested > capped ? requested - capped : BigInt(0);
+  // Ratio via a scaled integer division to avoid float error on huge values.
+  const ratio = Number((deduction * BigInt(1_000_000)) / requested) / 1_000_000;
+  if (ratio >= DEDUCTION_CRITICAL_RATIO) return { severity: "CRITICAL", ratio, deduction };
+  if (deduction > BigInt(0)) return { severity: "CAUTION", ratio, deduction };
+  return { severity: "NONE", ratio: 0, deduction: BigInt(0) };
+}
 
 export type BlacklistVerdict =
   | "BLACKLIST_INTERFACE_DETECTED"
@@ -42,7 +85,9 @@ export function isPositiveDetection(v: string): boolean {
   return v === "CONFIRMED_HONEYPOT_BEHAVIOR" ||
     v === "SELL_RESTRICTION_DETECTED" ||
     v === "BLACKLIST_INTERFACE_DETECTED" ||
-    v === "OBSERVED_EFFECTIVE_TAX";
+    v === "EFFECTIVE_DEDUCTION_OBSERVED_ON_TESTED_PATH" ||
+    v === "MINT_INTERFACE_DETECTED" ||
+    v === "TRANSFER_REVERTED";
 }
 
 /** COVERAGE_INCOMPLETE, TEST_FAILED and UNKNOWN are not completed checks. */
@@ -75,8 +120,30 @@ export const BLACKLIST_SELECTORS: Record<string, string> = {
   "3f4ba83a": "unpause()",
 };
 
+/**
+ * Mint interfaces, same DETECTION_ONLY contract as the blacklist table.
+ * ERC-20 does not standardise minting, so absence proves nothing — a token can
+ * mint through any internal path under any name.
+ */
+export const MINT_SELECTORS: Record<string, string> = {
+  "40c10f19": "mint(address,uint256)",
+  "a0712d68": "mint(uint256)",
+  "94bf804d": "mint(uint256,address)",
+  "d0def521": "mint(address,string)",
+  "449a52f8": "mintTo(address,uint256)",
+  "6a627842": "mint(address)",
+  "1249c58b": "mint()",
+  "983b2d56": "addMinter(address)",
+  "aa271e1a": "isMinter(address)",
+  "42966c68": "burn(uint256)",
+};
+
 /** Scans runtime bytecode for known selectors. Presence only, never absence. */
 export function scanSelectors(code: string, table: Record<string, string>): string[] {
+  // KNOWN IMPRECISION: a 4-byte sequence can also appear inside constants or
+  // packed data, so this can over-report. That is acceptable only because every
+  // selector finding maps to CAUTION and never to CRITICAL — an over-report
+  // costs a warning, not a false accusation.
   const hex = code.toLowerCase().replace(/^0x/, "");
   const found: string[] = [];
   for (const [sel, name] of Object.entries(table)) {
@@ -114,3 +181,50 @@ export function transferSucceeded(outcome: CallOutcome, data: string | undefined
   if (!data || data === "0x") return true;          // USDT-style
   try { return BigInt(data) !== BigInt(0); } catch { return true; }
 }
+
+
+// ── Coverage quality ────────────────────────────────────────────────────────
+
+/**
+ * How well a capability was actually covered. "Checked" is not one thing:
+ * a behavioural simulation and a selector scan are different kinds of answer.
+ */
+export type CoverageQuality =
+  | "COMPLETE_FOR_DEFINED_CORE_CHECK"   // the CORE check ran fully within its scope
+  | "DETECTION_ONLY"                    // presence detectable, absence not provable
+  | "PARTIAL"
+  | "UNKNOWN"
+  | "FAILED"
+  | "NOT_APPLICABLE";
+
+/**
+ * Blacklist is DETECTION_ONLY and will remain so without a full analyser.
+ * It counts toward CORE coverage, but the CLEAR definition states explicitly
+ * that a clear result never asserts the capability is absent.
+ */
+export const CAPABILITY_COVERAGE_QUALITY: Record<string, CoverageQuality> = {
+  CONTRACT_CODE_PRESENT: "COMPLETE_FOR_DEFINED_CORE_CHECK",
+  PROXY_UPGRADEABILITY: "DETECTION_ONLY",
+  OWNERSHIP_PRIVILEGE: "DETECTION_ONLY",
+  MINT_AUTHORITY: "COMPLETE_FOR_DEFINED_CORE_CHECK",
+  FREEZE_AUTHORITY: "COMPLETE_FOR_DEFINED_CORE_CHECK",
+  UNLIMITED_MINT_RISK: "COMPLETE_FOR_DEFINED_CORE_CHECK",
+  HONEYPOT_INDICATOR: "PARTIAL",
+  SELL_RESTRICTION: "PARTIAL",
+  SELL_TAX: "PARTIAL",
+  BLACKLIST_CAPABILITY: "DETECTION_ONLY",
+  MINT_AUTHORITY_EVM: "DETECTION_ONLY",
+  KNOWN_CRITICAL_EXPLOIT: "UNKNOWN",
+};
+
+/**
+ * FORMAL DEFINITION OF `CLEAR`.
+ *
+ * Kept in code, not only in prose, so it travels with every result.
+ */
+export const CLEAR_DEFINITION =
+  "No critical security behaviour was established within the completed CORE " +
+  "security checks at the assessed state. CLEAR does NOT mean the asset is " +
+  "safe, is not a scam, has no malicious capability, or carries no future " +
+  "risk. Several CORE checks are DETECTION_ONLY or PARTIAL: they can prove " +
+  "presence but cannot prove absence.";

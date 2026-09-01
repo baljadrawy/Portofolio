@@ -123,6 +123,17 @@ export interface Finding {
   /** How many independent sources assert it. */
   corroboration: number;
   freshness: "FRESH" | "AGING" | "STALE" | "UNKNOWN";
+  /**
+   * Whether `freshness` was computed from an observation time the source
+   * actually stated, or fell back to the moment we retrieved it.
+   *
+   * RETRIEVED means the evidence row carries `observedAt = null` — the source
+   * told us a fact but not when it became true. The fallback is sound for a
+   * live chain read, which is by construction current, but it must stay
+   * visible: a caller that treats RETRIEVED freshness as an observed
+   * timestamp is reading a guarantee that was never made.
+   */
+  freshnessBasis: "OBSERVED" | "RETRIEVED";
   evidenceIds: string[];
   detail: string;
 }

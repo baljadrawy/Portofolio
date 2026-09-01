@@ -346,7 +346,19 @@ incident registry cannot assert safety) · EVM tokens → `INSUFFICIENT_EVIDENCE
 `INSUFFICIENT_EVIDENCE`. **No path produces a false CLEAR.**
 
 **No migration was required** — evidence lands in the Phase 1 tables.
-115 tests passing. **Phase 2B** closed 3 of TD-32's 4 capabilities deterministically; `SELL_TAX` remains `COVERAGE_INCOMPLETE`.
+**Phase 2B** closed 3 of TD-32's 4 capabilities deterministically. **Phase 2C**
+closed the fourth by measuring the effective sell deduction inside a single
+`eth_call`, added EVM `MINT_AUTHORITY` detection, and wrote down what CLEAR
+does and does not assert. **TD-32 CLOSED.** 127 tests passing.
+
+Coverage on the golden set rose from 3/10 to **9/10** (USDC, USDT), 8/10 (DAI,
+LINK), 5/10 (WETH — no liquidity pair on the tested factory). Zero CRITICAL
+findings, zero false positives.
+
+**CLEAR is still unreachable for every asset** — not because a token failed,
+but because `KNOWN_CRITICAL_EXPLOIT` returns `COVERAGE_UNKNOWN` from an empty
+incident registry. **TD-27 is reclassified `PRE-LAUNCH BLOCKER`**: it is now
+the single remaining obstacle to a CLEAR disposition.
 
 ---
 

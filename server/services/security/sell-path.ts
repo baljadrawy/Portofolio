@@ -4,9 +4,31 @@ import type {
   ProviderCapabilities, SecurityObservation,
 } from "../security-provider";
 import {
-  BLACKLIST_SELECTORS, scanSelectors, classifyCall, transferSucceeded,
+  BLACKLIST_SELECTORS, MINT_SELECTORS, scanSelectors, classifyCall, transferSucceeded, classifyDeduction,
   type HoneypotVerdict, type SellRestrictionVerdict, type BlacklistVerdict, type SellTaxVerdict,
 } from "@shared/sell-path-rules";
+
+/**
+ * Deduction probe, deployed only inside eth_call via a `code` override.
+ *
+ * Raw EVM bytecode, hand-assembled and verified live against DAI:
+ *   balanceOf(pair)  -> mem[0x80]
+ *   transfer(pair, amount)          -> success at mem[0xe0], returndata mem[0xa0]
+ *   balanceOf(pair)  -> mem[0xc0]
+ *   return mem[0x80..0x100]
+ *
+ * calldata: [0:32]=token [32:64]=pair [64:96]=amount
+ *
+ * This contract is never deployed to any chain. It exists for the duration of a
+ * single simulated call and cannot sign, send, or move anything.
+ */
+const DEDUCTION_PROBE_CODE =
+  // Hand-assembled and verified live against DAI before being embedded.
+  // Layout: balanceOf(pair)->0x80 · zero 0xa0 · transfer(pair,amt) success->0xe0
+  //         · balanceOf(pair)->0xc0 · return 0x80..0x100
+  "0x6370a0823160e01b60005260203560045260206080602460006000355afa50600060a05263a9059cbb60e01b600052602035600452604035602452602060a06044600060006000355af160e0526370a0823160e01b600052602035600452602060c0602460006000355afa5060806080f3";
+
+const PROBE_CONTRACT = "0x2222222222222222222222222222222222222222";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SellPathAdapter — deterministic sell simulation via eth_call.
@@ -87,7 +109,7 @@ export class SellPathAdapter implements SecurityProvider {
       providerKey: this.providerKey,
       supportedFamilies: ["evm"],
       supportedChainIds: Object.keys(FACTORY_BY_CHAIN).map(Number),
-      observationTypes: ["HONEYPOT_INDICATOR", "SELL_RESTRICTION", "SELL_TAX", "BLACKLIST_CAPABILITY"],
+      observationTypes: ["HONEYPOT_INDICATOR", "SELL_RESTRICTION", "SELL_TAX", "BLACKLIST_CAPABILITY", "MINT_AUTHORITY"],
       requiresApiKey: false,
       readOnly: true,
     };
@@ -115,7 +137,7 @@ export class SellPathAdapter implements SecurityProvider {
       const obs: SecurityObservation[] = [];
 
       // ── 1. blacklist interface scan (bytecode, no simulation) ────────────
-      obs.push(await this.scanBlacklist(cfg.rpc, token));
+      obs.push(...await this.scanInterfaces(cfg.rpc, token));
 
       // ── 2. resolve the pool that a sell would route through ─────────────
       const pairRes = await ethCall(cfg.rpc, {
@@ -197,14 +219,8 @@ export class SellPathAdapter implements SecurityProvider {
         obs.push(this.verdict("SELL_RESTRICTION", "NO_RESTRICTION_OBSERVED_IN_TESTED_PATH", { testedPath }));
       }
 
-      // ── 5. sell tax — NOT measurable with a single eth_call ──────────────
-      // Measuring an effective tax needs the recipient balance delta across the
-      // transfer, which one eth_call cannot observe. Rather than infer a number
-      // we cannot prove, this is declared incomplete.
-      obs.push(this.verdict("SELL_TAX", "COVERAGE_INCOMPLETE", {
-        reason: "effective tax requires observing recipient balance delta across the transfer; a single eth_call cannot",
-        wouldRequire: "a probe contract deployed via code override that performs transfer then reads balanceOf",
-      }));
+      // ── 5. effective deduction, measured inside one eth_call ─────────────
+      obs.push(await this.measureDeduction(cfg.rpc, token, pair, slot, amount));
 
       return { providerKey: this.providerKey, status: "OK", observations: obs, latencyMs: Date.now() - started };
     } catch (e: any) {
@@ -227,28 +243,40 @@ export class SellPathAdapter implements SecurityProvider {
     };
   }
 
-  private async scanBlacklist(rpc: string, token: string): Promise<SecurityObservation> {
-    const code = await ethCall(rpc, {}, "latest").then(() => null).catch(() => null);
-    void code;
+  /**
+   * One bytecode read, two DETECTION_ONLY answers. Both share the same
+   * contract: a found selector proves presence; a missing one proves nothing.
+   */
+  private async scanInterfaces(rpc: string, token: string): Promise<SecurityObservation[]> {
     const res = await fetch(rpc, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getCode", params: [token, "latest"] }),
     }).then((r) => r.json()).catch(() => null) as any;
 
+    const LIMIT = "absence of a known selector does not prove the capability is absent; it may be renamed, inlined, or behind a proxy";
+
     if (!res || res.error || typeof res.result !== "string") {
-      return this.verdict("BLACKLIST_CAPABILITY", "TEST_FAILED" as BlacklistVerdict,
-        { reason: "could not read bytecode" });
+      return [
+        this.verdict("BLACKLIST_CAPABILITY", "TEST_FAILED" as BlacklistVerdict, { reason: "could not read bytecode" }),
+        this.verdict("MINT_AUTHORITY", "TEST_FAILED", { reason: "could not read bytecode" }),
+      ];
     }
-    const found = scanSelectors(res.result, BLACKLIST_SELECTORS);
-    if (found.length > 0) {
-      return this.verdict("BLACKLIST_CAPABILITY", "BLACKLIST_INTERFACE_DETECTED" as BlacklistVerdict,
-        { selectors: found, note: "detection of an interface, not of malicious intent" });
-    }
-    return this.verdict("BLACKLIST_CAPABILITY", "NO_KNOWN_BLACKLIST_INTERFACE_DETECTED" as BlacklistVerdict, {
-      selectorsChecked: Object.values(BLACKLIST_SELECTORS).length,
-      // The whole point of the verdict name.
-      limitation: "absence of a known selector does not prove the capability is absent; it may be renamed, inlined, or behind a proxy",
-    });
+
+    const bl = scanSelectors(res.result, BLACKLIST_SELECTORS);
+    const mint = scanSelectors(res.result, MINT_SELECTORS);
+
+    return [
+      bl.length > 0
+        ? this.verdict("BLACKLIST_CAPABILITY", "BLACKLIST_INTERFACE_DETECTED" as BlacklistVerdict,
+            { selectors: bl, coverageQuality: "DETECTION_ONLY", note: "detection of an interface, not of malicious intent" })
+        : this.verdict("BLACKLIST_CAPABILITY", "NO_KNOWN_BLACKLIST_INTERFACE_DETECTED" as BlacklistVerdict,
+            { selectorsChecked: Object.keys(BLACKLIST_SELECTORS).length, coverageQuality: "DETECTION_ONLY", limitation: LIMIT }),
+      mint.length > 0
+        ? this.verdict("MINT_AUTHORITY", "MINT_INTERFACE_DETECTED",
+            { selectors: mint, coverageQuality: "DETECTION_ONLY", note: "many legitimate tokens mint by design" })
+        : this.verdict("MINT_AUTHORITY", "NO_KNOWN_MINT_INTERFACE_DETECTED",
+            { selectorsChecked: Object.keys(MINT_SELECTORS).length, coverageQuality: "DETECTION_ONLY", limitation: LIMIT }),
+    ];
   }
 
   /** Bounded probe of the first N storage slots for the balances mapping. */
@@ -265,6 +293,79 @@ export class SellPathAdapter implements SecurityProvider {
       }
     }
     return null;
+  }
+
+  /**
+   * Measures what the recipient ACTUALLY receives, by running a probe contract
+   * that reads the pair balance, transfers, and reads it again — all inside a
+   * single eth_call so the intermediate state is observable.
+   */
+  private async measureDeduction(
+    rpc: string, token: string, pair: string, slot: number, amount: bigint,
+  ): Promise<SecurityObservation> {
+    const calldata = "0x" + addrArg(token) + addrArg(pair) + uintArg(amount);
+    const overrides = {
+      [PROBE_CONTRACT]: { code: DEDUCTION_PROBE_CODE },
+      [token]: { stateDiff: { [mappingSlot(PROBE_CONTRACT, slot)]: "0x" + uintArg(amount * BigInt(10)) } },
+    };
+
+    const testedPath = {
+      method: "eth_call",
+      probe: PROBE_CONTRACT,
+      token, pair,
+      requested: amount.toString(),
+      block: "latest",
+      signed: false, broadcast: false, realFunds: false,
+      note: "probe contract exists only inside the simulation",
+    };
+
+    const r = await ethCall(rpc, { from: PROBE_CONTRACT, to: PROBE_CONTRACT, data: calldata }, "latest", overrides);
+    const outcome = classifyCall(r);
+    if (outcome === "RPC_ERROR") {
+      return this.verdict("SELL_TAX", "TEST_FAILED" as SellTaxVerdict, { testedPath, error: r.error });
+    }
+    if (outcome === "REVERT" || !r.data || r.data.length < 2 + 64 * 4) {
+      return this.verdict("SELL_TAX", "TRANSFER_REVERTED" as SellTaxVerdict, { testedPath, outcome, returned: r.data });
+    }
+
+    const hex = r.data.slice(2);
+    const word = (i: number) => BigInt("0x" + hex.slice(i * 64, (i + 1) * 64));
+    const before = word(0), after = word(2), success = word(3);
+
+    if (success === BigInt(0)) {
+      return this.verdict("SELL_TAX", "TRANSFER_REVERTED" as SellTaxVerdict,
+        { testedPath, reason: "transfer returned failure inside the probe" });
+    }
+
+    const received = after > before ? after - before : BigInt(0);
+    const { severity, ratio, deduction } = classifyDeduction(amount, received);
+
+    const detail = {
+      testedPath,
+      requestedAmount: amount.toString(),
+      amountReceived: received.toString(),
+      deductionAmount: deduction.toString(),
+      deductionRatio: ratio,
+      severity,
+      pairBalanceBefore: before.toString(),
+      pairBalanceAfter: after.toString(),
+      normalizerVersion: "deduction-probe-v1",
+      // These are the paths this single measurement cannot see.
+      knownFalseNegatives: [
+        "amount-dependent tax that only triggers above this probe size",
+        "sender-specific tax or an allowlist the probe happens to satisfy",
+        "time, block or cooldown dependent logic",
+        "pair-specific behaviour on a route other than this one",
+        "tx.origin dependent logic",
+        "a tax that can be enabled after this observation",
+      ],
+    };
+
+    return this.verdict("SELL_TAX",
+      (deduction > BigInt(0)
+        ? "EFFECTIVE_DEDUCTION_OBSERVED_ON_TESTED_PATH"
+        : "ZERO_DEDUCTION_OBSERVED_ON_TESTED_PATH") as SellTaxVerdict,
+      detail);
   }
 
   async health(): Promise<{ healthy: boolean; detail?: string }> {

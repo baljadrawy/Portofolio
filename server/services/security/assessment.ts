@@ -48,13 +48,26 @@ function toFinding(
   deterministic: boolean,
   corroboration: number,
   freshness: Finding["freshness"],
+  freshnessBasis: Finding["freshnessBasis"],
   evidenceIds: string[],
   detail: string,
 ): Finding {
-  return { capability, severity, deterministic, corroboration, freshness, evidenceIds, detail };
+  return { capability, severity, deterministic, corroboration, freshness, freshnessBasis, evidenceIds, detail };
 }
 
 export class SecurityAssessmentService {
+  /**
+   * A deduction is CRITICAL when it destroys at least half the value. At 100%
+   * the transfer "succeeds" while the recipient receives nothing — economically
+   * unsellable, which is what a honeypot achieves without ever reverting.
+   */
+  private deductionIsCritical(obs: Array<{ value: unknown; raw?: unknown }>): boolean {
+    return obs.some((o) => {
+      const r = (o as any).rawDetail;
+      return r?.severity === "CRITICAL";
+    });
+  }
+
   async assess(
     assetId: string | null,
     input: SecurityAssessmentInput,
@@ -95,12 +108,19 @@ export class SecurityAssessmentService {
 
     // ── build findings from observations ────────────────────────────────────
     // Group by capability so corroboration across providers can be counted.
-    const byCapability = new Map<string, Array<{ providerKey: string; value: unknown; deterministic: boolean; observedAt: Date | null }>>();
+    type Obs = { providerKey: string; value: unknown; deterministic: boolean; observedAt: Date | null; rawDetail?: any };
+    const byCapability = new Map<string, Obs[]>();
     for (const r of results.filter((x) => x.status === "OK")) {
       const deterministic = r.providerKey === "direct-chain";
       for (const o of r.observations) {
         const list = byCapability.get(o.type) ?? [];
-        list.push({ providerKey: r.providerKey, value: o.normalized, deterministic, observedAt: o.observedAt ?? null });
+        list.push({
+          providerKey: r.providerKey, value: o.normalized, deterministic,
+          observedAt: o.observedAt ?? null,
+          // Carried through so severity thresholds can be applied without
+          // re-parsing the raw payload.
+          rawDetail: o.raw as any,
+        });
         byCapability.set(o.type, list);
       }
     }
@@ -126,7 +146,6 @@ export class SecurityAssessmentService {
     if (incidentObs.length > 0 && !incidentUsable) byCapability.delete("KNOWN_CRITICAL_EXPLOIT");
 
     const capabilitiesChecked = Array.from(byCapability.keys()) as SecurityCapability[];
-    type Obs = { providerKey: string; value: unknown; deterministic: boolean; observedAt: Date | null };
     const criticalFindings: Finding[] = [];
     const cautionFindings: Finding[] = [];
     const conflicts: SecurityCapability[] = [];
@@ -151,9 +170,8 @@ export class SecurityAssessmentService {
       // not the same as inventing an observedAt on the evidence row, which
       // stays null and honest.
       const freshest = (obs as Obs[]).map((o) => o.observedAt).filter(Boolean).sort((a, b) => b!.getTime() - a!.getTime())[0] ?? null;
-      const freshnessBasis: "OBSERVED" | "RETRIEVED" = freshest ? "OBSERVED" : "RETRIEVED";
+      const freshnessBasis: Finding["freshnessBasis"] = freshest ? "OBSERVED" : "RETRIEVED";
       const freshness = computeFreshness("SECURITY", freshest ?? assessedAt, assessedAt);
-      void freshnessBasis;
       if (freshness === "STALE") staleEvidence.push(cap);
 
       if (positive.length === 0) continue;
@@ -165,12 +183,13 @@ export class SecurityAssessmentService {
         case "KNOWN_CRITICAL_EXPLOIT":
           // Only an unresolved, in-scope incident is critical.
           if ((obs as Obs[]).some((o) => o.value === "KNOWN_CRITICAL_INCIDENT")) {
-            criticalFindings.push(toFinding(cap, "CRITICAL", false, obs.length, freshness, [], "known unresolved critical incident"));
+            criticalFindings.push(toFinding(cap, "CRITICAL", false, obs.length, freshness, freshnessBasis, [], "known unresolved critical incident"));
           }
           break;
         case "HONEYPOT_INDICATOR":
         case "SELL_RESTRICTION":
         case "BLACKLIST_CAPABILITY":
+        case "MINT_AUTHORITY":
         case "SELL_TAX": {
           const verdicts = (obs as Obs[]).map((o) => o.value).filter((v): v is string => typeof v === "string");
           if (verdicts.some(isPositiveDetection)) {
@@ -178,9 +197,26 @@ export class SecurityAssessmentService {
             // results, so a single observation establishes them. A blacklist
             // INTERFACE is only an interface — legitimate stablecoins have one —
             // so it is CAUTION, never CRITICAL.
-            const critical = verdicts.some((v) => v === "CONFIRMED_HONEYPOT_BEHAVIOR" || v === "SELL_RESTRICTION_DETECTED");
+            //
+            // A deduction escalates by SIZE, not by presence: a transfer can
+            // succeed while the recipient receives nothing, which is
+            // economically identical to a honeypot even though nothing
+            // reverted. That case must reach CRITICAL.
+            const deductionSeverity = (obs as Obs[])
+              .map((o) => (o as any).severity)
+              .find((x) => x === "CRITICAL" || x === "CAUTION");
+            const rawSeverity = (obs as Obs[])
+              .map((o) => (o.value === "EFFECTIVE_DEDUCTION_OBSERVED_ON_TESTED_PATH" ? (o as any).deductionSeverity : undefined))
+              .find(Boolean);
+            void deductionSeverity; void rawSeverity;
+            // A mint INTERFACE is never critical: most legitimate tokens mint.
+            const critical = verdicts.some((v) =>
+              v === "CONFIRMED_HONEYPOT_BEHAVIOR" ||
+              v === "SELL_RESTRICTION_DETECTED" ||
+              v === "TRANSFER_REVERTED") ||
+              (cap === "SELL_TAX" && this.deductionIsCritical(obs as Obs[]));
             (critical ? criticalFindings : cautionFindings).push(
-              toFinding(cap, critical ? "CRITICAL" : "CAUTION", true, corroboration, freshness, [],
+              toFinding(cap, critical ? "CRITICAL" : "CAUTION", true, corroboration, freshness, freshnessBasis, [],
                 `${cap}: ${verdicts.join(", ")}`),
             );
           }
@@ -193,7 +229,7 @@ export class SecurityAssessmentService {
         case "FREEZE_AUTHORITY":
           // Legitimate blue-chip protocols routinely have these. Alone they are
           // never critical — USDC is mintable, freezable and a proxy.
-          cautionFindings.push(toFinding(cap, "CAUTION", deterministic, corroboration, freshness, [], detail));
+          cautionFindings.push(toFinding(cap, "CAUTION", deterministic, corroboration, freshness, freshnessBasis, [], detail));
           break;
         default:
           break;
@@ -213,7 +249,7 @@ export class SecurityAssessmentService {
       if (liveAuthority) {
         cautionFindings.push(
           toFinding("UNLIMITED_MINT_RISK", "CAUTION",
-            (mintObs as Obs[]).some((o) => o.deterministic), mintObs.length, "FRESH", [],
+            (mintObs as Obs[]).some((o) => o.deterministic), mintObs.length, "FRESH", "RETRIEVED", [],
             "a live mint authority permits further issuance"),
         );
       }
@@ -226,7 +262,7 @@ export class SecurityAssessmentService {
       const live = obs.filter((o) => typeof o.value === "string" && o.value !== null);
       if (live.length > 0 && !cautionFindings.some((f) => f.capability === cap)) {
         cautionFindings.push(
-          toFinding(cap, "CAUTION", live.some((o) => o.deterministic), live.length, "FRESH", [],
+          toFinding(cap, "CAUTION", live.some((o) => o.deterministic), live.length, "FRESH", "RETRIEVED", [],
             `${cap} is live (${live.length} source)`),
         );
       }

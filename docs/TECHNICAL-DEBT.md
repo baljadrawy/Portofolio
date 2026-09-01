@@ -5,7 +5,7 @@
 > `00-CURRENT-STATE-AUDIT.md` is a **historical snapshot** taken at commit
 > `2521133`. When the two disagree, **this file is current**.
 
-**Last updated:** 2026-09-01 (Phase 2B — TD-32)
+**Last updated:** 2026-09-01 (Phase 2C — TD-32 closed)
 
 ---
 
@@ -58,8 +58,8 @@ Contract: [`CORE-LAUNCH-SCOPE.md`](./CORE-LAUNCH-SCOPE.md).
 
 ```
 PRE-LAUNCH BLOCKER      : 2   TD-24 (market sources — become CORE in Phase 3)
-                              TD-32 (3 of 4 closed; SELL_TAX remains)
-PRE-LAUNCH NON-BLOCKER  : 7   TD-09, TD-23, TD-27, TD-31, TD-33, TD-34, TD-35
+                              TD-27 (empty incident registry blocks every CLEAR)
+PRE-LAUNCH NON-BLOCKER  : 9   TD-09, TD-23, TD-31, TD-33, TD-34, TD-35, TD-38, TD-39, TD-28*
 POST-LAUNCH             : 15
 RESOLVED                : 12
 ```
@@ -527,7 +527,18 @@ table is genuinely unreferenced and removing it.
 ### TD-27 — Incident registry is manually curated and empty
 
 | Field | Value |
-|---|---|
+|
+
+**Reclassified.** With TD-32 closed, this is now the ONLY capability blocking
+CLEAR for every asset on every chain. The registry is empty and declares no
+coverage scope, so `KNOWN_CRITICAL_EXPLOIT` always returns `COVERAGE_UNKNOWN`,
+which is not a completed check.
+
+The semantics are correct — an empty registry must not assert safety — but the
+consequence is that no asset can reach CLEAR. Closing it needs either a
+populated registry with a declared scope, or a real advisory source.
+
+---|---|
 | **Title** | `KNOWN_CRITICAL_EXPLOIT` is answered from a hand-maintained, currently empty registry |
 | **Discovered** | 2026-09-01 · Phase 2 |
 | **Severity** | MEDIUM |
@@ -596,6 +607,29 @@ table is genuinely unreferenced and removing it.
 
 | Field | Value |
 |---|---|
+| **Title** | Honeypot, sell restriction, sell tax and blacklist had no production source for EVM tokens |
+| **Class** | ✅ **RESOLVED** |
+| **Status** | CLOSED — Phase 2C |
+
+All four closed deterministically, with no provider and no licence obligation:
+
+| Capability | Method | Coverage quality |
+|---|---|---|
+| HONEYPOT_INDICATOR | `eth_call` sell simulation into the pair | PARTIAL |
+| SELL_RESTRICTION | same simulation | PARTIAL |
+| SELL_TAX | probe contract via `code` override: balanceOf → transfer → balanceOf, all in one `eth_call` | PARTIAL |
+| BLACKLIST_CAPABILITY | bytecode selector scan | DETECTION_ONLY |
+
+`MINT_AUTHORITY` on EVM — also lost when GoPlus was removed, though not named in
+TD-32 — is covered by the same DETECTION_ONLY selector scan.
+
+Read-only throughout: no signing, no broadcast, no key, no user wallet, no real
+funds. The probe contract exists for the duration of one simulated call.
+
+**Verified live:** DAI, USDC, USDT, LINK all measure a zero deduction on a
+1,000,000-unit probe. Coverage rose from 3/10 to 9/10 for USDC and USDT.
+
+---|---|
 | **Title** | Honeypot, sell restriction, sell tax and blacklist had no production source for EVM tokens |
 | **Discovered** | 2026-09-01 · Phase 2 remediation |
 | **Severity** | HIGH |
@@ -688,6 +722,60 @@ honeypot, so the requirement stands and the gap is recorded.
 | **Class** | `POST-LAUNCH` |
 | **Rationale** | Bounded deliberately — unbounded storage scanning would be the start of a static analyser, which is out of scope. Tokens using an unusual layout, a proxy with a distant slot, or a non-standard structure yield `COVERAGE_INCOMPLETE` rather than a wrong answer. |
 | **Status** | OPEN — accepted |
+
+---
+
+### TD-37 — Selector scanning matches substrings
+
+| Field | Value |
+|---|---|
+| **Title** | `scanSelectors` substring-matches 4-byte sequences in bytecode |
+| **Discovered** | 2026-09-01 · Phase 2C |
+| **Severity** | LOW |
+| **Class** | `POST-LAUNCH` |
+| **Rationale** | A 4-byte sequence can appear inside constants or packed data, so the scan can over-report. Tolerable only because every selector finding maps to CAUTION and never to CRITICAL — an over-report costs a warning, not a false accusation. A precise fix needs jump-table parsing, which is the start of a static analyser. |
+| **Status** | OPEN — accepted |
+
+---
+
+### TD-38 — Probe bytecode is hand-assembled
+
+| Field | Value |
+|---|---|
+| **Title** | The deduction probe is raw EVM bytecode with no assembler in the build |
+| **Discovered** | 2026-09-01 · Phase 2C |
+| **Severity** | MEDIUM |
+| **Class** | `PRE-LAUNCH NON-BLOCKER` |
+| **Rationale** | During implementation a duplicated `PUSH1 0x20` shifted the second `STATICCALL`'s arguments, so the post-transfer balance read returned zero and every legitimate token measured a 100% deduction. Caught by running the golden set, not by inspection. The bytecode is now generated from a verified opcode list rather than typed as a string. |
+| **Mitigation** | golden-set regression is the guard; a mismatch shows up immediately as a false CRITICAL |
+| **Status** | OPEN |
+
+---
+
+### TD-39 — Chain evidence carries no observation time
+
+| Field | Value |
+|---|---|
+| **Title** | `observedAt` is null on chain-read evidence, so stored freshness is always UNKNOWN |
+| **Discovered** | 2026-09-01 · Phase 2C |
+| **Severity** | MEDIUM |
+| **Class** | `PRE-LAUNCH NON-BLOCKER` |
+
+`observedAt` is part of the evidence hash by design — a fact valid at a
+different moment is a different fact. Stamping it with wall-clock time is what
+broke idempotency in Phase 2 (3 → 6 → 11 rows), so chain providers now leave it
+null. The consequence: every stored row reads `freshness_status = UNKNOWN`,
+while the live assessment computes FRESH by falling back to the assessment time.
+
+The two disagree. Nothing reads the stored value to make a decision today, so
+the impact is latent, not active. Phase 2C made the fallback visible rather
+than hiding it: `Finding.freshnessBasis` now records OBSERVED vs RETRIEVED, and
+a test pins that the basis never changes whether a critical is established.
+
+The real fix is to stamp `observedAt` with the **block timestamp**, which is
+both the true observation moment and stable for a given block. That trades a
+new row per block for correctness, so it needs a retention policy decided
+alongside it — out of scope for a TD-32 closure gate.
 
 ---
 

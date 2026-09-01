@@ -11,6 +11,51 @@
 > with state overrides. Read-only — no signing, no broadcast, no key, no user
 > wallet. Policy `security-policy-v3`.
 >
+> **Phase 2C** closes TD-32. `SELL_TAX` is now measured, not inferred: a probe
+> contract injected by `code` override reads the pair balance, calls
+> `transfer`, and reads it again — all inside ONE `eth_call`. The difference
+> between requested and received IS the effective deduction, whatever
+> mechanism caused it. `MINT_AUTHORITY` on EVM is covered by the same bytecode
+> selector scan as `BLACKLIST_CAPABILITY`.
+>
+> ### What CLEAR means — and what it does not
+>
+> CLEAR is the weakest possible positive statement, and it is worded to stay
+> that way:
+>
+> > No critical security behaviour was **established** within the **completed
+> > CORE checks** at the **assessed state**.
+>
+> Each phrase is load-bearing. *Established* excludes stale or single-source
+> uncorroborated claims. *Completed CORE checks* excludes anything that
+> returned COVERAGE_UNKNOWN or failed. *Assessed state* is a block, not a
+> promise about the next one.
+>
+> CLEAR does **not** mean the asset is safe, is not a scam, has no malicious
+> capability, or carries no future risk. The reason is structural, not a
+> disclaimer: several CORE checks are DETECTION_ONLY or PARTIAL. They can
+> prove **presence** and cannot prove **absence**.
+>
+> | Check | Quality | Can prove presence | Can prove absence |
+> |---|---|:--:|:--:|
+> | BLACKLIST_CAPABILITY | DETECTION_ONLY | ✅ | ❌ |
+> | MINT_AUTHORITY (EVM) | DETECTION_ONLY | ✅ | ❌ |
+> | HONEYPOT_INDICATOR | PARTIAL | ✅ | ❌ |
+> | SELL_RESTRICTION | PARTIAL | ✅ | ❌ |
+> | SELL_TAX | PARTIAL | ✅ | ❌ |
+> | MINT/FREEZE_AUTHORITY (Solana) | COMPLETE_FOR_DEFINED_CORE_CHECK | ✅ | ✅ |
+>
+> A blacklist can be implemented without any of the twelve known selectors —
+> inside a proxy, behind an unusual name, or as a balance check in `transfer`.
+> `NO_KNOWN_BLACKLIST_INTERFACE_DETECTED` therefore says only that the twelve
+> known shapes were absent from the deployed bytecode. It is a statement about
+> the scan, not about the token.
+>
+> The single-token sell simulation is likewise one path at one size against one
+> pair. A contract that taxes above a threshold, blocks a specific address, or
+> activates after a delay will pass it. This is why the deduction result is
+> named `ZERO_DEDUCTION_OBSERVED_ON_TESTED_PATH` and never `NO_TAX`.
+>
 > **Locked semantics — every one of these is a name that refuses to overclaim:**
 >
 > ```

@@ -5,6 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   scanSelectors, classifyCall, transferSucceeded, isPositiveDetection, countsAsChecked,
+  classifyDeduction, CAPABILITY_COVERAGE_QUALITY, CLEAR_DEFINITION,
   BLACKLIST_SELECTORS,
 } from "../shared/sell-path-rules";
 import { PRODUCTION_PROVIDER_KEYS } from "../shared/security-rules";
@@ -30,10 +31,11 @@ test("COVERAGE_INCOMPLETE and TEST_FAILED are not completed checks", () => {
 
 test("only genuine detections count as positive", () => {
   for (const v of ["CONFIRMED_HONEYPOT_BEHAVIOR", "SELL_RESTRICTION_DETECTED",
-                   "BLACKLIST_INTERFACE_DETECTED", "OBSERVED_EFFECTIVE_TAX"]) {
+                   "BLACKLIST_INTERFACE_DETECTED",
+                   "EFFECTIVE_DEDUCTION_OBSERVED_ON_TESTED_PATH", "TRANSFER_REVERTED"]) {
     assert.equal(isPositiveDetection(v), true, v);
   }
-  for (const v of ["NO_RESTRICTION_OBSERVED_IN_TESTED_PATH", "NO_TAX_OBSERVED_IN_TESTED_PATH",
+  for (const v of ["NO_RESTRICTION_OBSERVED_IN_TESTED_PATH", "ZERO_DEDUCTION_OBSERVED_ON_TESTED_PATH",
                    "NO_KNOWN_BLACKLIST_INTERFACE_DETECTED", "COVERAGE_INCOMPLETE", "TEST_FAILED"]) {
     assert.equal(isPositiveDetection(v), false, v);
   }
@@ -115,4 +117,80 @@ test("sell-path is in the production provider set; GoPlus is not", () => {
   assert.ok(keys.includes("sell-path"));
   assert.ok(keys.includes("direct-chain"));
   assert.ok(!keys.includes("goplus"));
+});
+
+
+// ── Phase 2C: effective deduction ───────────────────────────────────────────
+
+test("zero deduction is a bounded observation, never universal proof", () => {
+  const r = classifyDeduction(BigInt(1000), BigInt(1000));
+  assert.equal(r.severity, "NONE");
+  assert.equal(r.deduction, BigInt(0));
+  // The verdict name carries the boundary.
+  assert.equal(isPositiveDetection("ZERO_DEDUCTION_OBSERVED_ON_TESTED_PATH"), false);
+  assert.match("ZERO_DEDUCTION_OBSERVED_ON_TESTED_PATH", /ON_TESTED_PATH$/);
+});
+
+test("a moderate deduction is CAUTION and reports its size", () => {
+  const r = classifyDeduction(BigInt(1000), BigInt(950));   // 5%
+  assert.equal(r.severity, "CAUTION");
+  assert.equal(r.deduction, BigInt(50));
+  assert.ok(Math.abs(r.ratio - 0.05) < 1e-6);
+});
+
+test("a deduction at or above half the value is CRITICAL", () => {
+  assert.equal(classifyDeduction(BigInt(1000), BigInt(500)).severity, "CRITICAL");
+  assert.equal(classifyDeduction(BigInt(1000), BigInt(499)).severity, "CRITICAL");
+  assert.equal(classifyDeduction(BigInt(1000), BigInt(501)).severity, "CAUTION");
+});
+
+test("a 100% deduction is CRITICAL even though nothing reverted", () => {
+  // The transfer call succeeds; the recipient receives nothing. Economically
+  // identical to a honeypot, reached without a revert.
+  const r = classifyDeduction(BigInt(1000), BigInt(0));
+  assert.equal(r.severity, "CRITICAL");
+  assert.equal(r.ratio, 1);
+});
+
+test("deduction maths is exact on token-scale values", () => {
+  const amt = BigInt("1000000000000000000000");     // 1000e18
+  const r = classifyDeduction(amt, amt / BigInt(2));
+  assert.equal(r.severity, "CRITICAL");
+  assert.ok(Math.abs(r.ratio - 0.5) < 1e-6);
+});
+
+test("receiving more than requested is not a negative deduction", () => {
+  const r = classifyDeduction(BigInt(1000), BigInt(1200));
+  assert.equal(r.deduction, BigInt(0));
+  assert.equal(r.severity, "NONE");
+});
+
+test("a zero requested amount cannot produce a ratio", () => {
+  const r = classifyDeduction(BigInt(0), BigInt(0));
+  assert.equal(r.severity, "NONE");
+  assert.equal(r.ratio, 0);
+});
+
+// ── Coverage quality and the CLEAR contract ────────────────────────────────
+
+test("blacklist is DETECTION_ONLY, not exclusion coverage", () => {
+  assert.equal(CAPABILITY_COVERAGE_QUALITY.BLACKLIST_CAPABILITY, "DETECTION_ONLY");
+  assert.notEqual(CAPABILITY_COVERAGE_QUALITY.BLACKLIST_CAPABILITY, "COMPLETE_FOR_DEFINED_CORE_CHECK");
+});
+
+test("simulation-based capabilities are PARTIAL, not complete", () => {
+  for (const c of ["HONEYPOT_INDICATOR", "SELL_RESTRICTION", "SELL_TAX"]) {
+    assert.equal(CAPABILITY_COVERAGE_QUALITY[c], "PARTIAL", c);
+  }
+});
+
+test("Solana authority checks are complete for their CORE definition", () => {
+  assert.equal(CAPABILITY_COVERAGE_QUALITY.MINT_AUTHORITY, "COMPLETE_FOR_DEFINED_CORE_CHECK");
+  assert.equal(CAPABILITY_COVERAGE_QUALITY.FREEZE_AUTHORITY, "COMPLETE_FOR_DEFINED_CORE_CHECK");
+});
+
+test("CLEAR is formally defined and explicitly denies meaning SAFE", () => {
+  assert.match(CLEAR_DEFINITION, /No critical security behaviour was established/);
+  assert.match(CLEAR_DEFINITION, /does NOT mean the asset is safe/i);
+  assert.match(CLEAR_DEFINITION, /prove presence but cannot prove absence/);
 });

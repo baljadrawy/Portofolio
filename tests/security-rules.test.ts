@@ -12,7 +12,7 @@ import {
 
 const f = (o: Partial<Finding>): Finding => ({
   capability: "HONEYPOT_INDICATOR", severity: "CRITICAL", deterministic: false,
-  corroboration: 1, freshness: "FRESH", evidenceIds: [], detail: "t", ...o,
+  corroboration: 1, freshness: "FRESH", freshnessBasis: "OBSERVED", evidenceIds: [], detail: "t", ...o,
 });
 const base = {
   coreRequired: ["HONEYPOT_INDICATOR"] as any, checked: ["HONEYPOT_INDICATOR"] as any,
@@ -236,4 +236,19 @@ test("full coverage with only bounded negative observations permits CLEAR", () =
     findings: [],
   });
   assert.equal(r.disposition, "CLEAR");
+});
+
+test("a RETRIEVED freshness basis stays visible on the finding", () => {
+  // The basis is not decorative. FRESH-by-RETRIEVED means the source never
+  // stated when the fact became true; we substituted the moment we asked.
+  // Sound for a live chain read, misleading if silently read as observed.
+  const retrieved = f({ freshnessBasis: "RETRIEVED" });
+  assert.equal(retrieved.freshness, "FRESH");
+  assert.equal(retrieved.freshnessBasis, "RETRIEVED");
+  // It must not quietly change how a critical is established — the basis
+  // records provenance, it does not grant or withhold standing.
+  assert.equal(
+    isEstablishedCritical(f({ severity: "CRITICAL", deterministic: true, freshnessBasis: "RETRIEVED" })),
+    isEstablishedCritical(f({ severity: "CRITICAL", deterministic: true, freshnessBasis: "OBSERVED" })),
+  );
 });

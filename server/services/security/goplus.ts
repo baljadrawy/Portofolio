@@ -42,7 +42,7 @@ export class GoPlusAdapter implements SecurityProvider {
       observationTypes: [
         "HONEYPOT_INDICATOR", "SELL_RESTRICTION", "BUY_TAX", "SELL_TAX",
         "MINT_AUTHORITY", "BLACKLIST_CAPABILITY", "PROXY_UPGRADEABILITY",
-        "OWNERSHIP_PRIVILEGE", "HOLDER_CONCENTRATION", "CONTRACT_VERIFIED",
+        "OWNERSHIP_PRIVILEGE", "HOLDER_CONCENTRATION", "CONTRACT_CODE_PRESENT",
       ],
       requiresApiKey: false,
       readOnly: true,
@@ -139,7 +139,7 @@ export class GoPlusAdapter implements SecurityProvider {
     flag("is_blacklisted", "BLACKLIST_CAPABILITY");
     flag("is_proxy", "PROXY_UPGRADEABILITY");
     flag("can_take_back_ownership", "OWNERSHIP_PRIVILEGE");
-    flag("is_open_source", "CONTRACT_VERIFIED");
+    flag("is_open_source", "CONTRACT_CODE_PRESENT");
     num("buy_tax", "BUY_TAX", "RATIO");
     num("sell_tax", "SELL_TAX", "RATIO");
     num("holder_count", "HOLDER_CONCENTRATION", "COUNT");

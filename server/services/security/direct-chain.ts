@@ -59,7 +59,7 @@ export class DirectChainAdapter implements SecurityProvider {
       supportedFamilies: ["evm", "solana"],
       supportedChainIds: Object.keys(EVM_RPC).map(Number),
       observationTypes: [
-        "CONTRACT_VERIFIED", "PROXY_UPGRADEABILITY", "OWNERSHIP_PRIVILEGE",
+        "CONTRACT_CODE_PRESENT", "PROXY_UPGRADEABILITY", "OWNERSHIP_PRIVILEGE",
         "MINT_AUTHORITY", "FREEZE_AUTHORITY",
       ],
       requiresApiKey: false,
@@ -110,7 +110,7 @@ export class DirectChainAdapter implements SecurityProvider {
     const code = await rpc(url, "eth_getCode", [address, "latest"]);
     const isContract = isContractCode(code);
     out.push({
-      type: "CONTRACT_VERIFIED",
+      type: "CONTRACT_CODE_PRESENT",
       raw: { codeLength: typeof code === "string" ? code.length : 0, prefix: typeof code === "string" ? code.slice(0, 8) : null },
       normalized: isContract,
       provenance: `evm block ${blockNumber}`,

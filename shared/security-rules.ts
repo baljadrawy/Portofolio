@@ -1,12 +1,24 @@
 // Pure security rules — no network, no database, no provider SDK.
 // Deterministic and unit-testable in isolation.
 
-export const SECURITY_POLICY_VERSION = "security-policy-v1";
+export const SECURITY_POLICY_VERSION = "security-policy-v2";
+
+/**
+ * Providers permitted in the production CORE path.
+ *
+ * Declared here, in a pure module, so it is a POLICY statement testable without
+ * booting the database — and so the production set cannot drift silently.
+ *
+ * GoPlus is deliberately absent: its licence restricts commercial use without
+ * written permission and is silent on caching and retention. Silence is not
+ * permission, and the Evidence Store caches and retains by design.
+ */
+export const PRODUCTION_PROVIDER_KEYS = ["direct-chain", "internal-rules"] as const;
 
 // ── Capabilities ────────────────────────────────────────────────────────────
 
 export type SecurityCapability =
-  | "CONTRACT_VERIFIED" | "HONEYPOT_INDICATOR" | "SELL_RESTRICTION"
+  | "CONTRACT_CODE_PRESENT" | "HONEYPOT_INDICATOR" | "SELL_RESTRICTION"
   | "BUY_TAX" | "SELL_TAX" | "MINT_AUTHORITY" | "UNLIMITED_MINT_RISK"
   | "FREEZE_AUTHORITY" | "BLACKLIST_CAPABILITY" | "OWNERSHIP_PRIVILEGE"
   | "PROXY_UPGRADEABILITY" | "ADMIN_PRIVILEGES" | "LIQUIDITY_RISK"
@@ -38,7 +50,7 @@ export interface CapabilitySpec {
 }
 
 export const CAPABILITY_MATRIX: CapabilitySpec[] = [
-  { capability: "CONTRACT_VERIFIED",    evm: true,  solana: false, nativeApplicable: false, coreRequired: true,  deterministic: true,  falsePositiveSensitivity: "LOW" },
+  { capability: "CONTRACT_CODE_PRESENT", evm: true,  solana: false, nativeApplicable: false, coreRequired: true,  deterministic: true,  falsePositiveSensitivity: "LOW" },
   { capability: "HONEYPOT_INDICATOR",   evm: true,  solana: false, nativeApplicable: false, coreRequired: true,  deterministic: false, falsePositiveSensitivity: "HIGH" },
   { capability: "SELL_RESTRICTION",     evm: true,  solana: false, nativeApplicable: false, coreRequired: true,  deterministic: false, falsePositiveSensitivity: "HIGH" },
   { capability: "BUY_TAX",              evm: true,  solana: false, nativeApplicable: false, coreRequired: false, deterministic: false, falsePositiveSensitivity: "MEDIUM" },
@@ -68,6 +80,41 @@ export function coreCapabilitiesFor(family: "evm" | "solana", isNative: boolean)
  * HOLD / REDUCE / EXIT do not exist at this layer and must not be introduced.
  */
 export type SecurityDisposition = "CLEAR" | "CAUTION" | "CRITICAL" | "INSUFFICIENT_EVIDENCE";
+
+/**
+ * Incident-coverage semantics.
+ *
+ * LOCKED RULE:
+ *   ABSENCE FROM AN INCOMPLETE REGISTRY  ≠  VERIFIED ABSENCE OF INCIDENTS
+ *
+ * A source may only assert VERIFIED_NO_KNOWN_CRITICAL_INCIDENT when it has a
+ * declared, non-empty coverage scope that actually includes the asset. An empty
+ * or scope-less registry yields COVERAGE_UNKNOWN, which does not count as a
+ * checked capability and therefore cannot contribute to CLEAR.
+ */
+export type IncidentCoverage =
+  | "VERIFIED_NO_KNOWN_CRITICAL_INCIDENT"
+  | "KNOWN_CRITICAL_INCIDENT"
+  | "COVERAGE_UNKNOWN"
+  | "NOT_APPLICABLE";
+
+/** Only a source with real coverage can produce a positive assurance. */
+export function incidentCoverageFrom(opts: {
+  registrySize: number;
+  coverageScopeDeclared: boolean;
+  assetInScope: boolean;
+  hasUnresolvedCritical: boolean;
+}): IncidentCoverage {
+  if (opts.hasUnresolvedCritical) return "KNOWN_CRITICAL_INCIDENT";
+  if (!opts.coverageScopeDeclared || opts.registrySize === 0) return "COVERAGE_UNKNOWN";
+  if (!opts.assetInScope) return "COVERAGE_UNKNOWN";
+  return "VERIFIED_NO_KNOWN_CRITICAL_INCIDENT";
+}
+
+/** COVERAGE_UNKNOWN must not be treated as a completed check. */
+export function incidentCoverageCountsAsChecked(c: IncidentCoverage): boolean {
+  return c === "VERIFIED_NO_KNOWN_CRITICAL_INCIDENT" || c === "KNOWN_CRITICAL_INCIDENT" || c === "NOT_APPLICABLE";
+}
 
 export interface Finding {
   capability: SecurityCapability;
@@ -216,12 +263,23 @@ export function addressFromSlot(slotValue: string): string {
  * "no KNOWN proxy pattern found", not "definitely not a proxy" — USDC is a
  * live example that fails EIP-1967 while genuinely being a proxy.
  */
+export type ProxyDetection = "KNOWN_PROXY_PATTERN_DETECTED" | "NO_KNOWN_PROXY_PATTERN_DETECTED";
+
 export function detectProxy(slots: { eip1967?: string; zeppelin?: string }): {
-  isProxy: boolean; pattern: string | null; implementation: string | null;
+  detection: ProxyDetection;
+  /** True only when a pattern matched. Never asserts "not upgradeable". */
+  isProxy: boolean;
+  pattern: string | null;
+  implementation: string | null;
+  patternsChecked: string[];
 } {
-  if (slotIsSet(slots.eip1967)) return { isProxy: true, pattern: "EIP-1967", implementation: addressFromSlot(slots.eip1967!) };
-  if (slotIsSet(slots.zeppelin)) return { isProxy: true, pattern: "zeppelinos", implementation: addressFromSlot(slots.zeppelin!) };
-  return { isProxy: false, pattern: null, implementation: null };
+  const patternsChecked = ["EIP-1967", "zeppelinos"];
+  if (slotIsSet(slots.eip1967))
+    return { detection: "KNOWN_PROXY_PATTERN_DETECTED", isProxy: true, pattern: "EIP-1967", implementation: addressFromSlot(slots.eip1967!), patternsChecked };
+  if (slotIsSet(slots.zeppelin))
+    return { detection: "KNOWN_PROXY_PATTERN_DETECTED", isProxy: true, pattern: "zeppelinos", implementation: addressFromSlot(slots.zeppelin!), patternsChecked };
+  // NOT "definitely not upgradeable" — only these two patterns were examined.
+  return { detection: "NO_KNOWN_PROXY_PATTERN_DETECTED", isProxy: false, pattern: null, implementation: null, patternsChecked };
 }
 
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";

@@ -28,7 +28,7 @@ export type SecurityObservationType =
   | "HOLDER_CONCENTRATION"
   | "DEPLOYER_RISK"
   | "OWNERSHIP_PRIVILEGE"
-  | "CONTRACT_VERIFIED"
+  | "CONTRACT_CODE_PRESENT"
   // Added in Phase 2. Solana's freeze authority has no EVM equivalent and is a
   // CORE check: a live freeze authority can render a holding untradeable.
   | "FREEZE_AUTHORITY"

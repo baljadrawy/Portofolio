@@ -4,6 +4,11 @@ import { computeFreshness } from "@shared/evidence-rules";
 import {
   computeDisposition, coreCapabilitiesFor, SECURITY_POLICY_VERSION,
   incidentCoverageCountsAsChecked,
+} from "@shared/security-rules";
+import {
+  countsAsChecked, isPositiveDetection,
+} from "@shared/sell-path-rules";
+import {
   type Finding, type SecurityCapability, type SecurityDisposition,
 } from "@shared/security-rules";
 
@@ -104,6 +109,17 @@ export class SecurityAssessmentService {
     // It is an answered CALL but not a completed CHECK, so it is excluded here
     // and the capability falls into `missing` — which forces
     // INSUFFICIENT_EVIDENCE rather than a false CLEAR.
+    // Sell-path verdicts are strings, not booleans. COVERAGE_INCOMPLETE and
+    // TEST_FAILED are answered calls but NOT completed checks, so they must not
+    // count toward coverage — otherwise a probe that could not run would look
+    // like a passed check.
+    for (const cap of ["HONEYPOT_INDICATOR", "SELL_RESTRICTION", "SELL_TAX", "BLACKLIST_CAPABILITY"]) {
+      const o = byCapability.get(cap) ?? [];
+      if (o.length > 0 && !(o as Obs[]).some((x) => typeof x.value === "string" && countsAsChecked(x.value))) {
+        byCapability.delete(cap);
+      }
+    }
+
     const incidentObs = byCapability.get("KNOWN_CRITICAL_EXPLOIT") ?? [];
     const incidentUsable = incidentObs.length > 0 &&
       incidentObs.some((o: any) => incidentCoverageCountsAsChecked(o.value));
@@ -154,8 +170,22 @@ export class SecurityAssessmentService {
           break;
         case "HONEYPOT_INDICATOR":
         case "SELL_RESTRICTION":
-          criticalFindings.push(toFinding(cap, "CRITICAL", deterministic, corroboration, freshness, [], detail));
+        case "BLACKLIST_CAPABILITY":
+        case "SELL_TAX": {
+          const verdicts = (obs as Obs[]).map((o) => o.value).filter((v): v is string => typeof v === "string");
+          if (verdicts.some(isPositiveDetection)) {
+            // Honeypot and sell restriction are deterministic simulation
+            // results, so a single observation establishes them. A blacklist
+            // INTERFACE is only an interface — legitimate stablecoins have one —
+            // so it is CAUTION, never CRITICAL.
+            const critical = verdicts.some((v) => v === "CONFIRMED_HONEYPOT_BEHAVIOR" || v === "SELL_RESTRICTION_DETECTED");
+            (critical ? criticalFindings : cautionFindings).push(
+              toFinding(cap, critical ? "CRITICAL" : "CAUTION", true, corroboration, freshness, [],
+                `${cap}: ${verdicts.join(", ")}`),
+            );
+          }
           break;
+        }
         case "BLACKLIST_CAPABILITY":
         case "MINT_AUTHORITY":
         case "PROXY_UPGRADEABILITY":

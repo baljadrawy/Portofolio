@@ -7,12 +7,19 @@
 > INSUFFICIENT_EVIDENCE` — deliberately NOT an investment decision. Policy
 > `security-policy-v2`. Rules: `shared/security-rules.ts`.
 >
-> **Three locked semantics from remediation:**
+> **Phase 2B** adds `sell-path`: deterministic sell simulation via `eth_call`
+> with state overrides. Read-only — no signing, no broadcast, no key, no user
+> wallet. Policy `security-policy-v3`.
+>
+> **Locked semantics — every one of these is a name that refuses to overclaim:**
 >
 > ```
-> ABSENCE FROM AN INCOMPLETE REGISTRY  ≠  VERIFIED ABSENCE OF INCIDENTS
-> CONTRACT_CODE_PRESENT                ≠  SOURCE_CODE_VERIFIED
-> NO_KNOWN_PROXY_PATTERN_DETECTED      ≠  NOT UPGRADEABLE
+> ABSENCE FROM AN INCOMPLETE REGISTRY   ≠  VERIFIED ABSENCE OF INCIDENTS
+> CONTRACT_CODE_PRESENT                 ≠  SOURCE_CODE_VERIFIED
+> NO_KNOWN_PROXY_PATTERN_DETECTED       ≠  NOT UPGRADEABLE
+> NO_HONEYPOT_BEHAVIOR_OBSERVED_IN_TESTED_PATH  ≠  NOT A HONEYPOT
+> NO_KNOWN_BLACKLIST_INTERFACE_DETECTED ≠  NO BLACKLIST CAPABILITY
+> RPC failure                           ≠  token behaviour
 > ```
 >
 > 🟢 **CORE / PRE-LAUNCH** (Phase 2) — but only the checks that prevent a dangerous HOLD.

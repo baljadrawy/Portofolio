@@ -5,7 +5,7 @@
 > `00-CURRENT-STATE-AUDIT.md` is a **historical snapshot** taken at commit
 > `2521133`. When the two disagree, **this file is current**.
 
-**Last updated:** 2026-09-01 (Phase 2 remediation)
+**Last updated:** 2026-09-01 (Phase 2B — TD-32)
 
 ---
 
@@ -58,10 +58,10 @@ Contract: [`CORE-LAUNCH-SCOPE.md`](./CORE-LAUNCH-SCOPE.md).
 
 ```
 PRE-LAUNCH BLOCKER      : 2   TD-24 (market sources — become CORE in Phase 3)
-                              TD-32 (EVM token security uncovered)
-PRE-LAUNCH NON-BLOCKER  : 5   TD-09, TD-23, TD-27, TD-31, TD-33
-POST-LAUNCH             : 14
-RESOLVED                : 12  TD-26, TD-28, TD-29 closed
+                              TD-32 (3 of 4 closed; SELL_TAX remains)
+PRE-LAUNCH NON-BLOCKER  : 7   TD-09, TD-23, TD-27, TD-31, TD-33, TD-34, TD-35
+POST-LAUNCH             : 15
+RESOLVED                : 12
 ```
 
 **TD-32 is the honest cost of resolving the licence exposure.** It is recorded
@@ -596,6 +596,35 @@ table is genuinely unreferenced and removing it.
 
 | Field | Value |
 |---|---|
+| **Title** | Honeypot, sell restriction, sell tax and blacklist had no production source for EVM tokens |
+| **Discovered** | 2026-09-01 · Phase 2 remediation |
+| **Severity** | HIGH |
+| **Class** | 🟡 **PRE-LAUNCH BLOCKER — 3 of 4 closed** |
+| **Status** | PARTIALLY RESOLVED |
+
+**Closed in Phase 2B** by `SellPathAdapter`, deterministic and provider-free:
+
+| Capability | Method | Verdict model |
+|---|---|---|
+| HONEYPOT_INDICATOR | `eth_call` sell simulation, probe → pair, balance granted by `stateDiff` | `CONFIRMED_HONEYPOT_BEHAVIOR` / `NO_HONEYPOT_BEHAVIOR_OBSERVED_IN_TESTED_PATH` / `COVERAGE_INCOMPLETE` / `TEST_FAILED` |
+| SELL_RESTRICTION | same simulation | `SELL_RESTRICTION_DETECTED` / `NO_RESTRICTION_OBSERVED_IN_TESTED_PATH` / … |
+| BLACKLIST_CAPABILITY | bytecode selector scan (12 known interfaces) | `BLACKLIST_INTERFACE_DETECTED` / `NO_KNOWN_BLACKLIST_INTERFACE_DETECTED` / … |
+
+No signing, no broadcast, no key, no user wallet, no funds. State overrides
+live only inside the RPC node's simulation.
+
+**Still open — SELL_TAX.** An effective tax is the recipient's balance delta
+across the transfer, and a single `eth_call` cannot observe it. Measuring it
+would need a probe contract deployed via `code` override that performs the
+transfer and then reads `balanceOf`. Rather than infer a number we cannot
+prove, the capability returns `COVERAGE_INCOMPLETE` — which is not a completed
+check, so an EVM token with no tax measurement cannot reach CLEAR.
+
+**Why the requirement was not lowered.** Marking SELL_TAX non-CORE would have
+produced a PASS by redefinition. A 100% sell tax is economically identical to a
+honeypot, so the requirement stands and the gap is recorded.
+
+---|---|
 | **Title** | Honeypot, sell restriction, sell tax and blacklist have no production source for EVM tokens |
 | **Discovered** | 2026-09-01 · Phase 2 remediation |
 | **Severity** | HIGH |
@@ -619,6 +648,46 @@ table is genuinely unreferenced and removing it.
 | **Rationale** | Corrects an earlier overstatement that these had "no ToS". The blockchain DATA carries no licence and nothing we store belongs to the endpoint operator; what may bind us is service acceptable-use (rate limits, fair use). If a policy disallowed our call pattern the remedy is to change endpoint or self-host, not to delete evidence. |
 | **Target phase** | before launch, or resolved by self-hosting a node |
 | **Status** | OPEN |
+
+---
+
+### TD-34 — Sell simulation covers one route at one block
+
+| Field | Value |
+|---|---|
+| **Title** | The sell probe exercises a single Uniswap V2 WETH path at `latest` with a fixed amount |
+| **Discovered** | 2026-09-01 · Phase 2B |
+| **Severity** | MEDIUM |
+| **Class** | `PRE-LAUNCH NON-BLOCKER` |
+| **Known false negatives** | amount-dependent gates above the probe size · time or block dependent gates (cooldowns, trading-enabled flags) · per-address allowlists the probe happens to satisfy · routes other than this V2 WETH pair · V3-only and non-WETH-paired tokens |
+| **Why non-blocking** | The verdict name states the boundary — `NO_HONEYPOT_BEHAVIOR_OBSERVED_IN_TESTED_PATH` never claims universal safety, and the known false negatives ship in the evidence payload. A token with no V2 WETH pair yields `COVERAGE_INCOMPLETE`, not a pass. |
+| **Status** | OPEN — accepted |
+
+---
+
+### TD-35 — Sell path implemented for Ethereum mainnet only
+
+| Field | Value |
+|---|---|
+| **Title** | `FACTORY_BY_CHAIN` configures chain 1 only |
+| **Discovered** | 2026-09-01 · Phase 2B |
+| **Severity** | MEDIUM |
+| **Class** | `PRE-LAUNCH NON-BLOCKER` |
+| **Rationale** | Other EVM chains return `UNSUPPORTED` from this adapter, so their CORE capabilities stay missing and the disposition stays `INSUFFICIENT_EVIDENCE` — fail-safe, never a false CLEAR. Extending is configuration: a factory address, a wrapped-native address, an RPC per chain. |
+| **Status** | OPEN |
+
+---
+
+### TD-36 — Balance slot discovery is a bounded probe
+
+| Field | Value |
+|---|---|
+| **Title** | The balances mapping slot is found by probing slots 0–11 |
+| **Discovered** | 2026-09-01 · Phase 2B |
+| **Severity** | LOW |
+| **Class** | `POST-LAUNCH` |
+| **Rationale** | Bounded deliberately — unbounded storage scanning would be the start of a static analyser, which is out of scope. Tokens using an unusual layout, a proxy with a distant slot, or a non-standard structure yield `COVERAGE_INCOMPLETE` rather than a wrong answer. |
+| **Status** | OPEN — accepted |
 
 ---
 

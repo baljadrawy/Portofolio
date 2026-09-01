@@ -329,6 +329,7 @@ known-good sample · at least one live provider in production.
 | Provider | Role | Tier |
 |---|---|---|
 | `direct-chain` | deterministic RPC — contract code, proxy slots, ownership, Solana mint/freeze authority | 1 |
+| `sell-path` | deterministic `eth_call` sell simulation + blacklist selector scan | 1 |
 | `internal-rules` | curated incident registry with declared coverage scope | 2 |
 
 `goplus` was evaluated, implemented, then **removed from production** —
@@ -345,7 +346,7 @@ incident registry cannot assert safety) · EVM tokens → `INSUFFICIENT_EVIDENCE
 `INSUFFICIENT_EVIDENCE`. **No path produces a false CLEAR.**
 
 **No migration was required** — evidence lands in the Phase 1 tables.
-95 tests passing.
+115 tests passing. **Phase 2B** closed 3 of TD-32's 4 capabilities deterministically; `SELL_TAX` remains `COVERAGE_INCOMPLETE`.
 
 ---
 
